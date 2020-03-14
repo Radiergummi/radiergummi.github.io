@@ -1,0 +1,166 @@
+<!doctype html><html><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="chrome=1"><meta name=HandheldFriendly content="True"><meta name=MobileOptimized content="320"><meta name=viewport content="width=device-width,initial-scale=1"><meta name=referrer content="no-referrer"><meta name=description content="moritz friedrich, yet another full-stack developer."><title>Automatically deployed feature branch previews - Moritz Friedrich</title><link rel="shortcut icon" href=/sam.ico><link rel=stylesheet href=/css/main.min.c6b548a78bfba909b33a97135c5628a6a8b2710891a7dcce6b0d985d9c71b11d.css integrity="sha256-xrVIp4v7qQmzOpcTXFYopqiycQiRp9zOaw2YXZxxsR0=" crossorigin=anonymous media=screen><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Didact+Gothic|Fira+Code"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://www.moritzfriedrich.com/hero.png"><meta name=twitter:title content="Automatically deployed feature branch previews"><meta name=twitter:description content="Automatically deployed feature branch previews At MessengerPeople, we have employed a pretty strict branching schema:
+ /───fix/foo──o──\ / \ / \ master ━━┯━━━x━━━━x━━━━━━━━━━━━━━━━━━━━━x━━┯━━━━━━━━━━━━x━━┯━━━━━━━━━ │ \ │ / │ │ \ │ / │ │ \───feature/bar─o─o─o────o─│───o──o──/ │ │ │ │ v1.24.8 v1.24.9 v1.25.0 x: Merge/Branch o: Commit There's a single branch and source of truth, which is master. Every Release is a tag on master, every new development takes place in a new branch."><meta property="og:title" content="Automatically deployed feature branch previews"><meta property="og:description" content="Automatically deployed feature branch previews At MessengerPeople, we have employed a pretty strict branching schema:
+ /───fix/foo──o──\ / \ / \ master ━━┯━━━x━━━━x━━━━━━━━━━━━━━━━━━━━━x━━┯━━━━━━━━━━━━x━━┯━━━━━━━━━ │ \ │ / │ │ \ │ / │ │ \───feature/bar─o─o─o────o─│───o──o──/ │ │ │ │ v1.24.8 v1.24.9 v1.25.0 x: Merge/Branch o: Commit There's a single branch and source of truth, which is master. Every Release is a tag on master, every new development takes place in a new branch."><meta property="og:type" content="article"><meta property="og:url" content="https://www.moritzfriedrich.com/posts/feature-branch-previews/"><meta property="og:image" content="https://www.moritzfriedrich.com/hero.png"><meta property="article:published_time" content="2020-01-13T20:54:44+01:00"><meta property="article:modified_time" content="2020-01-13T20:54:44+01:00"><meta property="og:site_name" content="moritz friedrich"><title>Automatically deployed feature branch previews</title></head><body><div class=wrap><div class=section id=title>Automatically deployed feature branch previews</div><div class=section id=content>Monday, 13. January 2020 &#183; 2080 words<div class=tag-container><span class=tag><a href=https://www.moritzfriedrich.com/tags/blog>blog</a></span>
+<span class=tag><a href=https://www.moritzfriedrich.com/tags/story>story</a></span></div><h1 id=automatically-deployed-feature-branch-previews>Automatically deployed feature branch previews</h1><p>At <a href=https://www.messengerpeople.dev>MessengerPeople</a>, we have employed a pretty strict branching schema:</p><pre><code>                      /───fix/foo──o──\
+                     /                 \
+                    /                   \
+ master ━━┯━━━x━━━━x━━━━━━━━━━━━━━━━━━━━━x━━┯━━━━━━━━━━━━x━━┯━━━━━━━━━
+          │    \                            │           /   │
+          │     \                           │          /    │
+          │      \───feature/bar─o─o─o────o─│───o──o──/     │
+          │                                 │               │
+       v1.24.8                           v1.24.9         v1.25.0
+
+x: Merge/Branch
+o: Commit
+</code></pre><p>There's a <em>single</em> branch and source of truth, which is <code>master</code>. Every Release is a tag on master, every new development
+takes place in a new branch. This makes version control incredibly easy to reason with, as there simply isn't too much
+complexity: Master is bleeding-edge, releases are fixed points in time and code.<br>This has the additional advantage of master being a kind-of staging environment: Our CI pipeline builds after
+any commit to master, which usually happens as soon as a branch is merged into it. The result is deployed to our staging
+server, ready for QA to review before creating the actual release.</p><p>What has caused a little headache, though, is how to properly test feature branches. Easy for developers! They simply run
+<code>docker-compose up</code> and the development stack is spun up.<br>But what about testers, product managers, eager sales colleagues? They have no chance to review a feature in development
+until the dev deems it ready to merge (which it most definitely is not).</p><hr><p>This problem was bugging me more than I'd like to admit. After lots of coffee though, I came up with a plan! Our ideal
+solution should fulfill the following requirements:</p><ul><li><strong>Feature branches should be automatically deployed whenever someone commits to them.</strong> This is ideal for rapid
+interaction testing (a fancy word I just made up for someone screaming &ldquo;WTF nothing works!&rdquo; across the hall and
+someoneone shouting &ldquo;I just fixed it, reload the page!&rdquo; back at them).</li><li><strong>Deployments should have a unique hostname.</strong> As we're working with web apps used to living on the domain root, we
+can't just put them in a subfolder without breaking things. Therefore, each branch deployment must be available in their
+own subdomain (which brings additional pitfalls, more on that below).</li><li><strong>Deployments must have a valid SSL certificate and ask for credentials.</strong> Feature branches could contain sensitive
+details, personal data or inappropriate jokes (ever sent <em>&ldquo;penis&rdquo;</em> to 120.000 people by accident? Yup, witnessed it), so
+we must ensure only employees are able to view them.</li><li><strong>After merging branches, the server should remove their remnants.</strong> In a fast-paced environment, we create lots of
+branches, most of them pretty ephemeral. To avoid cluttering the server with hundreds of obsolete versions, it should
+remove stale deployments after they have been merged into master.</li></ul><p>The solution we came up with fulfills these criteria with a number of clever/imbecile (your pick) tricks!</p><h3 id=deployment-strategy>Deployment strategy</h3><p>As it often goes, your initial assumptions about a problem turn out to have a small mistake somewhere, causing everything
+relying on them to crumble down. With this project, deployment was the part that I had to rethink the most.</p><h4 id=iteration-1-let-the-ci-deploy-to-firebase>Iteration 1: Let the CI deploy to Firebase</h4><p>As we run the production and staging environments on <a href=https://firebase.google.com/docs/hosting>Firebase Hosting</a>, I though
+it'd make the most sense to deploy branch previews to new Firebase sites, too. You can actually host multiple sites in the
+sample Google Cloud project, but there's an upper limit of 36 websites per project. As we currently have 6 production sites up,
+this leaves us with 30 available previews—not enough. I shortly looked into creating new Google Cloud projects
+programmatically before deciding to abandon this approach.</p><h4 id=iteration-2-listen-to-github-webhooks-on-a-preview-server>Iteration 2: Listen to GitHub webhooks on a preview server</h4><p>A dedicated server it was, then. I experimented with a simple &ldquo;controller&rdquo; application written in Symfony that would listen to
+GitHub webhooks, create a preview directory, check out or pull the code change and build it according to some simple rules,
+maybe even a configuration file in the repository.<br>As I figured production builds would require more time than GitHub was willing to wait for the webhook response, I addded a job
+queue to the application and set up a separate worker process to process queued build jobs. The worker would scan the project
+structure, look for build instructions and carry it out. I even thought about dynamically running docker-compose setups to
+support backend applications, too.</p><p>It took me longer than I'd like to admit that I've started to recreate our CI server.</p><p><img src=https://user-images.githubusercontent.com/6115429/76680124-5fa8c180-65e6-11ea-9ef0-c399117b9a9c.jpeg alt=Genius.></p><p>While the application would indeed build as expected, it took ages and as several builds piled up, the server ran out of file
+descriptors. After the sudden realisation that we have complex build pipelines for a reason and my whacky little
+<code>if (fileExists('package.json'))</code> would <em>not</em> be enough, I scrapped the idea of the controller.</p><h4 id=iteration-3>Iteration 3:</h4><p>I turned back to our <a href=https://buddy.works/>Buddy CI server</a>, which I had foolishly ignored in the previous iteration. Buddy is
+an <em>amazing</em> product: What previously took me hours in Jenkins (don't even get me started on the BlueOcean pipeline syntax) is
+done in a matter of minutes on Buddy.<br>A separate pipeline was set up, configured to be limited to branches matching <code>^refs\/head\/(feature|fix)-(.+)$</code>. I decided to
+have the preview server do as little CGI work as possible to reduce complexity. This demanded deploying branch build artefacts
+to the correct location, within the web server root directory, up front. Therefore, I added a shell script to Buddy to build a
+slug of the project and branch name:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>export REPOSITORY<span style=color:#f92672>=</span><span style=color:#66d9ef>$(</span>echo $BUDDY_REPO_SLUG | cut -d<span style=color:#e6db74>&#39;/&#39;</span> -f2<span style=color:#66d9ef>)</span>
+export BRANCH<span style=color:#f92672>=</span><span style=color:#66d9ef>$(</span>echo <span style=color:#e6db74>&#34;</span>$BUDDY_EXECUTION_BRANCH<span style=color:#e6db74>&#34;</span> | iconv -t ascii//TRANSLIT | sed -r s/<span style=color:#f92672>[</span>^a-zA-Z0-9<span style=color:#f92672>]</span>+/-/g | sed -r s/^-+<span style=color:#ae81ff>\|</span>-+$//g | tr A-Z a-z<span style=color:#66d9ef>)</span>
+
+export PREVIEW_DEPLOYMENT_TARGET<span style=color:#f92672>=</span>$REPOSITORY-$BRANCH
+</code></pre></div><p>Thankfully, Buddy already provides a slug version of the repository name (think <code>acme-inc/my-repo</code>). We split it on the slash
+and take the second part of the result to get the repository name slug. Then, we &ldquo;slugify&rdquo; the current branch and append that
+to the repository name.<br>This leaves us with identifiers like <code>my-repo-feature-add-foo</code>, which are ideal for URLs! After the build process is done, we deploy the content of our <code>dist/</code> directory to the remote path <code>/var/www/previews/$PREVIEW_DEPLOYMENT_TARGET</code>, as Buddy supports using environment variables in deployment actions.</p><p>To sum up: Instead of wasting time needlessly managing Google Cloud API complexity or badly recreating CI servers, we take what
+we have and deploy the existing artefacts to a static file server. Deployments: Check!</p><h3 id=choosing-an-url-schema>Choosing an URL schema</h3><p>To serve those files, we have nginx set up with the web root pointing to <code>/var/www/previews</code>. There's two things left to take
+care of, though: Serving previews using HTTPS and limit the audience to our own employees. HTTPS is essential for CORS and
+authorization—also, it's 2020. We have free and ubiquituous SSL thanks to Let's Encrypt. There's no excuse, not even for
+internal projects.<br>Additionally, we don't want to expose new features to the public <em>in an uncontrolled manner</em>. This can lead to all kinds of
+trouble, from exposing sensitive details to raising expectations for new stuff that is ultimately scrapped.</p><p>Now, there are several options when it comes to the schema for URLs to your previews. For example, you could place all previews
+in sub-directories of your preview domain: That would look like <code>https://previews.example.org/{preview-slug}/</code>. This requires
+your application to be tolerant to path changes, though.<br>Instead, I settled on second-level subdomains: <code>https://{preview-slug}.previews.example.org/</code>. While this might sound more
+complex at first, it prevents the path issue and allows us to choose different webserver or CDN rules for individual previews,
+if need be.</p><p>The following nginx configuration handles this setup:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-nginx data-lang=nginx><span style=color:#66d9ef>server</span> {
+    <span style=color:#f92672>server_name</span> ~<span style=color:#e6db74>^(?&lt;subdomain&gt;[^.]+).preview.messengerpeople.dev;</span>
+    <span style=color:#e6db74>root</span> <span style=color:#e6db74>/var/www/previews/</span>$subdomain;
+    <span style=color:#f92672>index</span> <span style=color:#e6db74>index.html</span>;
+
+    <span style=color:#f92672>access_log</span> <span style=color:#e6db74>/var/log/nginx/</span>$host.access.log <span style=color:#e6db74>preview</span>;
+    <span style=color:#f92672>error_log</span>  <span style=color:#e6db74>/var/log/nginx/preview.error.log</span>;
+
+    <span style=color:#f92672>location</span> <span style=color:#e6db74>/</span> {
+        <span style=color:#f92672>try_files</span> <span style=color:#e6db74>/__PREVIEW_BUILD__/index.html</span> <span style=color:#e6db74>/dist/</span>$uri <span style=color:#e6db74>/dist/index.html</span> <span style=color:#e6db74>/build/</span>$uri <span style=color:#e6db74>/build/index.html</span> <span style=color:#e6db74>/public/</span>$uri <span style=color:#e6db74>/public/index.html</span> <span style=color:#e6db74>/</span>$uri <span style=color:#e6db74>/index.html</span> =<span style=color:#ae81ff>404</span>;
+    }
+
+    <span style=color:#f92672>error_page</span> <span style=color:#ae81ff>404</span> <span style=color:#e6db74>/404.html</span>;
+
+    <span style=color:#f92672>location</span> = <span style=color:#e6db74>/404.html</span> {
+        <span style=color:#f92672>root</span> <span style=color:#e6db74>/var/www/previews</span>;
+        <span style=color:#f92672>internal</span>;
+    }
+
+    <span style=color:#f92672>listen</span>              <span style=color:#e6db74>[::]:443</span> <span style=color:#e6db74>ssl</span> <span style=color:#e6db74>http2</span>;                                               <span style=color:#75715e># managed by Certbot
+</span><span style=color:#75715e></span>    <span style=color:#f92672>listen</span>                   <span style=color:#ae81ff>443</span> <span style=color:#e6db74>ssl</span> <span style=color:#e6db74>http2</span>;                                               <span style=color:#75715e># managed by Certbot
+</span><span style=color:#75715e></span>    <span style=color:#f92672>ssl_certificate</span>     <span style=color:#e6db74>/etc/letsencrypt/live/preview.messengerpeople.dev/fullchain.pem</span>;  <span style=color:#75715e># managed by Certbot
+</span><span style=color:#75715e></span>    <span style=color:#f92672>ssl_certificate_key</span> <span style=color:#e6db74>/etc/letsencrypt/live/preview.messengerpeople.dev/privkey.pem</span>;    <span style=color:#75715e># managed by Certbot
+</span><span style=color:#75715e></span>    <span style=color:#f92672>include</span>             <span style=color:#e6db74>/etc/letsencrypt/options-ssl-nginx.conf</span>;                          <span style=color:#75715e># managed by Certbot
+</span><span style=color:#75715e></span>    <span style=color:#f92672>ssl_dhparam</span>         <span style=color:#e6db74>/etc/letsencrypt/ssl-dhparams.pem</span>;                                <span style=color:#75715e># managed by Certbot
+</span><span style=color:#75715e></span>}
+
+</code></pre></div><p>This routes all requests for a subdomain into a directory named accordingly below <code>/var/www/previews</code>. If it doesn't exist, the
+friendly 404 page at <code>/var/www/previews/404.html</code> will be served instead. If it does, we have a matching preview! To support
+multiple environments, the <code>try_files</code> directive simply probes multiple common directory schemas: <code>dist/</code>, <code>build/</code> or
+<code>public/</code> (more on <code>__PREVIEW_BUILD__</code> later).</p><h3 id=ssl-shenanigans>SSL shenanigans</h3><p>I generated the SSL certificate referenced in the nginx configuration using the following command:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>sudo letsencrypt certonly <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>    -d <span style=color:#ae81ff>\*</span>.preview.messengerpeople.dev <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>    -d preview.messengerpeople.dev <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>    --dns-cloudflare <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>    --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini
+</code></pre></div><p>Wildcard domains as <code>*.preview.messengerpeople.dev</code> require a DNS verification. Certbot supports several plugins to perform DNS
+verifications, one of them for Cloudflare. This will automatically create and delete a verification record for the domain,
+which is perfect: Setup-and-forget SSL for our preview domain.<br>Now, in theory, the previews should be available on the internet already: That is, unless the domain is proxied through the
+Cloudflare cache! While you can <em>create</em> wildcard records in the Cloudflare DNS and even proxy them (if you're at least on a
+Business plan), the domain certificate still won't cover it; this makes using Cloudflare for the previews mostly impossible.</p><p>However, there's an escape hatch here! Cloudflare supports uploading custom certificates for websites on a Business plan.
+We have an existing certificate from Let's Encrypt already, but it has a pretty low expiration time (2–3 months), so
+uploading the renewed certificate every other day would be both a hassle and too error-prone.</p><p><strong>Lucky for us, the Cloudflare API allows to upload custom certificates programmatically and Let's Encrypt has post-renewal
+hooks!</strong></p><p>I've written <a href=https://gist.github.com/Radiergummi/bd7a7298a6d07e76912daa06a72707c5>a post-renewal hook script</a> that will take
+the existing credentials from the Cloudflare DNS verification plugin and update the custom certificate with the freshly created
+file right after the unattended renewal on our preview server.<br>All in all, this allows us to use a second-level subdomain, with a valid and auto-renewed SSL certificate, via the Cloudflare
+Proxy.</p><h3 id=guarding-access>Guarding access</h3><p>We could simply set up a Basic Authorization here, share a set of credentials with the company and leave the prompt to the
+user browser. As we've gone through all the trouble to make Cloudflare work, why not go the extra mile and defer authentication
+to <a href=https://teams.cloudflare.com/access/>Cloudflare Access</a>? Access is an easy way to let users authenticate with their
+company accounts, be it GitHub for developers or Microsoft for everyone else.<br>Set-up is pretty straight-forward once you've understood the security model. After creating an access policy, you'll need to
+restrict access to nginx to Cloudflare IP addresses, which are available from <code>https://www.cloudflare.com/ips-v4</code> and
+<code>https://www.cloudflare.com/ips-v6</code>. We have a script in place that polls the list every other day and updates an nginx snippet
+included in the server configuration.
+Bam! Previews are now restricted to employees.</p><h3 id=finishing-touches>Finishing touches</h3><p>Almost there! As we're working on a tool intended to be used by non-engineers too, it should have more UX than usual. Not that
+developers do not deserve great UX—they do!—but a generic 404 page from nginx looks not that scary to us.<br>To make this whole thing neat and approachable, I decided to render a placeholder page as soon as the build starts and remove
+it after the build completes. As Buddy also supports actions on pipeline failures, we can even override it with an error page
+in case the build fails!</p><p>This merely involves another build step that writes a HEREDOC string to <code>__PREVIEW_BUILD__/index.html</code>:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>mkdir -p /var/www/previews/$PREVIEW_DEPLOYMENT_TARGET/__PREVIEW_BUILD__
+cat <span style=color:#e6db74>&lt;&lt; EOF &gt; /var/www/previews/$PREVIEW_DEPLOYMENT_TARGET/__PREVIEW_BUILD__/index.html
+</span><span style=color:#e6db74>&lt;!doctype html&gt;
+</span><span style=color:#e6db74>&lt;html lang=&#34;en&#34;&gt;
+</span><span style=color:#e6db74>&lt;head&gt;
+</span><span style=color:#e6db74>    &lt;meta charset=&#34;utf-8&#34;&gt;
+</span><span style=color:#e6db74>    &lt;meta name=&#34;viewport&#34; content=&#34;width=device-width, initial-scale=1.0&#34;&gt;
+</span><span style=color:#e6db74>    &lt;title&gt;Preview of $BUDDY_EXECUTION_BRANCH&lt;/title&gt;
+</span><span style=color:#e6db74>    &lt;link href=&#34;https://fonts.googleapis.com/css2?family=Open+Sans:wght@400&amp;display=swap&#34; rel=&#34;stylesheet&#34;&gt;
+</span><span style=color:#e6db74>	  &lt;link href=&#34;https://preview.messengerpeople.dev/assets/style.css&#34;&gt;
+</span><span style=color:#e6db74>&lt;/head&gt;
+</span><span style=color:#e6db74>&lt;body&gt;
+</span><span style=color:#e6db74>&lt;img src=&#34;https://preview.messengerpeople.dev/assets/img/build.svg&#34;&gt;
+</span><span style=color:#e6db74>&lt;h1&gt;Preview Build is in progress&lt;/h1&gt;
+</span><span style=color:#e6db74>&lt;p&gt;
+</span><span style=color:#e6db74>    Hey there! We&#39;re currently building a preview of the branch
+</span><span style=color:#e6db74>    &lt;code&gt;$BUDDY_EXECUTION_BRANCH&lt;/code&gt;.
+</span><span style=color:#e6db74>&lt;/p&gt;
+</span><span style=color:#e6db74>&lt;p&gt;Please wait for a moment until the page is ready. It will refresh automatically.&lt;/p&gt;
+</span><span style=color:#e6db74>&lt;button type=&#34;button&#34; id=&#34;refresh&#34;&gt;Refresh now&lt;/button&gt;
+</span><span style=color:#e6db74>&lt;script async&gt;
+</span><span style=color:#e6db74>  setTimeout(() =&gt; window.location.reload(), 30000);
+</span><span style=color:#e6db74>  document.addEventListener(&#39;DOMContentLoaded&#39;, () =&gt; document
+</span><span style=color:#e6db74>    .getElementById(&#39;refresh&#39;)
+</span><span style=color:#e6db74>    .addEventListener(&#39;click&#39;, () =&gt; window.location.reload()),
+</span><span style=color:#e6db74>  );
+</span><span style=color:#e6db74>&lt;/script&gt;
+</span><span style=color:#e6db74>&lt;/body&gt;
+</span><span style=color:#e6db74>&lt;/html&gt;
+</span><span style=color:#e6db74>EOF</span>
+</code></pre></div><p>This renders the following, auto-reloading page:
+<img src=https://user-images.githubusercontent.com/6115429/76681509-e4e6a300-65f3-11ea-9f8a-a8aaa0c988ee.png alt=Screenshot>
+<em>By the way, the excellent illustration has been taken from <a href=https://undraw.co/>undraw.co</a>!</em></p><p>This allows engineers to send a link to product managers, testers or
+<a href=https://www.joelonsoftware.com/2000/08/09/the-joel-test-12-steps-to-better-code/>random employees</a> throughout the company,
+all of which can simply leave the tab open until the actual application runs.</p><h3 id=future-plans>Future plans</h3><p>There are so many ways to expand on this system! We have just included an index page, displaying all available previews. In the
+future, we'd like to add a feedback overlay, allowing testers to directly add notes and screenshots as issues to the
+repository.<br>I would also love to include support for other types of applications, for example whole docker-compose stacks.</p><p>That's a story for another day, though :)</p></div><div class="section bottom-menu"><hr><p><a href=/posts>back</a>
+&#183;
+<a href=/posts>blog</a>
+&#183;
+<a href=https://github.com/Radiergummi>github</a>
+&#183;
+<a href=/about>about</a>
+&#183;
+<a href=/imprint>imprint</a>
+&#183;
+<a href=/privacy>privacy</a>
+&#183;
+<a href=https://www.moritzfriedrich.com/>home</a></p></div><div class="section footer"><script></script></div></div></body></html>
