@@ -1,0 +1,78 @@
+<!doctype html><html><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="chrome=1"><meta name=HandheldFriendly content="True"><meta name=MobileOptimized content="320"><meta name=viewport content="width=device-width,initial-scale=1"><meta name=referrer content="no-referrer"><meta name=description content="moritz friedrich, yet another full-stack developer."><title>Taking user feedback-seriously - Moritz Friedrich</title><link rel="shortcut icon" href=/sam.ico><link rel=stylesheet href=/css/main.min.c6b548a78bfba909b33a97135c5628a6a8b2710891a7dcce6b0d985d9c71b11d.css integrity="sha256-xrVIp4v7qQmzOpcTXFYopqiycQiRp9zOaw2YXZxxsR0=" crossorigin=anonymous media=screen><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Didact+Gothic|Fira+Code"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://www.moritzfriedrich.com/hero.png"><meta name=twitter:title content="Taking user feedback-seriously"><meta name=twitter:description content="Recently, I got annoyed with the way we handle support in some cases. Users write emails or send messages via instant messaging apps, which end up in some ticket system, get assigned a priority and will be forwarded as a ticket to a support employee. Maybe they don't have time right away because they are busy or on vacation or don't like the customer or simply aren't too motivated that day."><meta property="og:title" content="Taking user feedback-seriously"><meta property="og:description" content="Recently, I got annoyed with the way we handle support in some cases. Users write emails or send messages via instant messaging apps, which end up in some ticket system, get assigned a priority and will be forwarded as a ticket to a support employee. Maybe they don't have time right away because they are busy or on vacation or don't like the customer or simply aren't too motivated that day."><meta property="og:type" content="article"><meta property="og:url" content="https://www.moritzfriedrich.com/posts/user-feedback/"><meta property="og:image" content="https://www.moritzfriedrich.com/hero.png"><meta property="article:published_time" content="2020-06-20T12:03:35+02:00"><meta property="article:modified_time" content="2020-06-20T12:03:35+02:00"><meta property="og:site_name" content="moritz friedrich"><title>Taking user feedback-seriously</title></head><body><div class=wrap><div class=section id=title>Taking user feedback-seriously</div><div class=section id=content>Saturday, 20. June 2020 &#183; 860 words<div class=tag-container><span class=tag><a href=https://www.moritzfriedrich.com/tags/blog>blog</a></span>
+<span class=tag><a href=https://www.moritzfriedrich.com/tags/story>story</a></span></div><p>Recently, I got annoyed with the way we handle support in some cases. Users write emails or send messages via instant messaging apps, which end up in some ticket
+system, get assigned a priority and will be forwarded as a ticket to a support employee. Maybe they don't have time right away because they are busy or on vacation
+or don't like the customer or simply aren't too motivated that day.<br>Later on, they discover there's a bug or a feature/change request in the ticket or they don't know the solution because the problem is too technical. What happens
+next is the ticket being assigned to a developer. Developers, by the nature of their role, don't interact with customers directly very often&ndash;so they will
+occasionally look into the ticket system, as their main tool is GitHub anyway, and notice a bunch of tickets.</p><p>In the best case, these tickets will be converted into issues or at least referred to by their IDs when creating pull requests. Usually, though, the developers will
+fix issues in a newer version, fire up Slack and tell the support employees that their problem <em>&ldquo;is fixed&rdquo;</em>. The support employee, in turn, will reassign the ticket
+to themselves and tell the user about the fix.<br>Actual feedback is rarely, if ever, collected or mentioned to someone on the engineering team. In most cases, product management will read feedback and maybe
+incorporate it into product descisions.</p><hr><p>This is a workflow I have witnessed in this or a similar form a lot by now. It has several issues: most prominently, engineers being completely disconnected from
+the very customers for whom they build the product. Every problem in the product is merely a new ticket ID. Feedback is reduced to new features on the backlog.
+Syncing things between version control and the ticket system will invariably cause things to be forgotten or miscommunicated.<br>I've been thinking about how to change this a lot and came up with an experiment I'm including into some smaller projects now:</p><p><strong>A feedback form that creates an issue on GitHub.</strong></p><p><em>&ldquo;What the hell?"</em>, I hear you say. <em>&ldquo;How can this be secure? Won't devs be flooded by pointless complaints and random hate? Are engineers supposed to do support
+now?"</em>. We'll get to each of those points. I'd just like to detail the implementation before.</p><p>The form itself is designed to reduce friction as much as possible: It consists of a message field (a text area without any length restrictions) and an optional,
+five-star rating field you know from online shops. The meta-data, like user and customer name, contact information and current application state are transparently
+gathered in the background.</p><pre><code> ┌──────────────────────────────────────────────────────────┐
+ │   email address                    your optional rating  │
+ │ ┌───────────────────────────────┐                        │
+ │ │ prefilled@user-name.tld       │  ★★★☆☆              │
+ │ └───────────────────────────────┘                        │
+ │                                                          │
+ │   how can we help?                                       │
+ │ ┌──────────────────────────────────────────────────────┐ │
+ │ │                                                      │ │
+ │ │                                                      │ │
+ │ │                                                      │ │
+ │ │                                                      │ │
+ │ └──────────────────────────────────────────────────────┘ │
+ │ ┏━━━━━━━━━━┓                                             │
+ │ ┃  Submit  ┃                            p͟r͟i͟v͟a͟c͟y͟ ͟p͟o͟l͟i͟c͟y   │
+ │ ┗━━━━━━━━━━┛                                             │
+ └──────────────────────────────────────────────────────────┘
+</code></pre><p>As the user submits the message, it will be augmented with the application state and <code>POST</code>ed to the server. As the backend picks the message up, it again augments
+it with information I'm not comfortable settable by the user: The user and customer identification details, the application the feedback was created for and
+so on.<br>We end up with an object like the following:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json>{
+    <span style=color:#f92672>&#34;message&#34;</span>: <span style=color:#e6db74>&#34;This is a test message.  \nIt can even contain _Markdown_!&#34;</span>,
+    <span style=color:#f92672>&#34;rating&#34;</span>: <span style=color:#ae81ff>4</span>,
+    <span style=color:#f92672>&#34;user&#34;</span>: <span style=color:#e6db74>&#34;moritz@messengerpeople.dev&#34;</span>,
+    <span style=color:#f92672>&#34;customer&#34;</span>: <span style=color:#ae81ff>293572</span>,
+    <span style=color:#f92672>&#34;repository&#34;</span>: <span style=color:#e6db74>&#34;app-name&#34;</span>,
+    <span style=color:#f92672>&#34;version&#34;</span>: <span style=color:#e6db74>&#34;ae124b2&#34;</span>,
+    <span style=color:#f92672>&#34;state&#34;</span>: { <span style=color:#960050;background-color:#1e0010>.</span><span style=color:#960050;background-color:#1e0010>.</span><span style=color:#960050;background-color:#1e0010>.</span> }
+}
+</code></pre></div><p>This object is subsequently sent to a special <code>feedback</code> exchange on our RabbitMQ cluster and routed to a specialized monitoring worker. The worker, essentially,
+checks whether it has an entry for the given repository name in its allow list, then creates an issue on the repository using GitHub API!<br>The worker itself is project agnostic: It treats all feedback messages the same way, rendering a structured issue text and adds labels as appropriate:</p><pre><code>User Feedback #3
+[Open]  @monitoring-bot opened this issue 17 minutes ago · 0 comments
+
+This is a test message.  
+It can even contain _Markdown_!
+
+-----------------------------------------------------------
+
+Overall rating: 4/5
+Submitted by:   [moritz@messengerpeople.dev](mailto:moritz@messengerpeople.dev)
+Customer:       [#293572](https://link.to.crm/customers/293572)
+Version:        [#ae124b2](https://github.com/org/repo/commit/ae124b2...)
+
+@monitoring-bot added labels: [automatically-generated] 
+                              [unverified]
+                              [feedback]
+                              [user:moritz@messengerpeople.dev]
+                              [customer:293572]
+</code></pre><p>As you can imagine, the labels allow to sort and filter feedback pretty efficiently - or hide it alltogether. Usually, when an issue is being worked on, the
+<code>unverified</code> label is removed and a priority or other internal labels assigned instead.</p><p>Summing up: This workflow basically allows customers to open an issue in our (private) GitHub projects. As a software company, this brings all customer feedback
+directly where developers are: Issues on GitHub. This allows for much deeper integration than most external issue trackers (excluding Jira, maybe). Issues can be
+solved with commits, linked to other open issues, discussed internally and refer to clear revisions of the source code. All of this reduces the fricition and helps
+keeping customers and developers connected, as human beings. Support folks stay in the loop, see code changes and related discussion, and can ultimately connect
+back to the customer.</p></div><div class="section bottom-menu"><hr><p><a href=/posts>back</a>
+&#183;
+<a href=/posts>blog</a>
+&#183;
+<a href=https://github.com/Radiergummi>github</a>
+&#183;
+<a href=/about>about</a>
+&#183;
+<a href=/imprint>imprint</a>
+&#183;
+<a href=/privacy>privacy</a>
+&#183;
+<a href=https://www.moritzfriedrich.com/>home</a></p></div><div class="section footer"><script></script></div></div></body></html>
