@@ -1,0 +1,122 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=referrer content="no-referrer-when-downgrade"><meta name=coverage content="Worldwide"><meta name=distribution content="Global"><meta name=HandheldFriendly content="True"><meta name=msapplication-tap-highlight content="no"><base href=https://www.moritzfriedrich.com/projects/cli/><link rel=canonical href=https://www.moritzfriedrich.com/projects/cli/ itemprop=url><link rel=sitemap type=application/xml title=Sitemap href=https://www.moritzfriedrich.com/sitemap.xml><meta name=url content="https://www.moritzfriedrich.com/projects/cli/"><meta name=twitter:url content="https://www.moritzfriedrich.com/projects/cli/"><meta property="og:url" content="https://www.moritzfriedrich.com/projects/cli/"><meta name=description content="moritz friedrich, yet another full-stack developer."><meta itemprop=description content="moritz friedrich, yet another full-stack developer."><meta property="og:description" content="moritz friedrich, yet another full-stack developer."><meta name=twitter:description content="moritz friedrich, yet another full-stack developer."><meta property="og:locale" content="en"><meta name=language content="en"><meta property="og:title" content="Internal CLI | Moritz Friedrich"><meta name=twitter:title content="Internal CLI | Moritz Friedrich"><meta itemprop=name content="Internal CLI | Moritz Friedrich"><meta name=application-name content="Internal CLI | Moritz Friedrich"><meta property="og:site_name" content><meta name=twitter:site content><meta name=twitter:creator content><meta property="fb:app_id" content><meta property="fb:admins" content><meta itemprop=image content="https://www.moritzfriedrich.com/"><meta property="og:image" content="https://www.moritzfriedrich.com/"><meta name=twitter:image content="https://www.moritzfriedrich.com/"><meta name=twitter:image:src content="https://www.moritzfriedrich.com/"><meta property="og:type" content="website"><meta property="og:updated_time" content="2020-03-17T10:12:39+0100"><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color=#2b5797><meta name=msapplication-TileColor content="#2b5797"><meta name=theme-color content="#ffffff"><script defer type=application/ld+json>{"@context":"http://schema.org","@type":"WebSite","url":"https://www.moritzfriedrich.com/projects/cli/","name":"Internal CLI","logo":"https://www.moritzfriedrich.com/img/logo.png","sameAs":["https://www.instagram.com/radiergummi","https://twitter.com/@mofriedrich","https://github.com/Radiergummi"]}</script><link rel=stylesheet href=/css/style.min.3f46e5124efcee47aa3f0e3aba4d2d0ccb5b09656fc96cb5a78f58b7ed98ff6b.css integrity="sha256-P0blEk787keqPw46uk0tDMtbCWVvyWy1p49Yt+2Y/2s=" crossorigin=anonymous media=screen><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Didact+Gothic|Fira+Code"><title>Internal CLI</title></head><body><div class=wrap><header class=page-header id=title><h1 class=page-title>Internal CLI</h1></header><main class=page-content id=content><p>As a company grows, its infrastructure grows with it. This makes it more and more unwieldy to manage all tools involved: Status dashboards, the company CRM, cloud
+provider control panels and home-grown software are all required to keep the business running, and everything needs to more or less work. Sometimes, there&rsquo;s a
+database query nobody ever cared enough about to build an interface for it: Say, archiving a customer, or checking the activity status of a bunch of customers by
+some arcane filter. Inevitably, someone will need a quick insight or a toggle or a new graph somewhere.<br>While we do have a more-or-less central place for such tasks, the time required to add new features to it often can&rsquo;t be justified. We end up with someone from the
+engineering team repeating the same task manually now and then, without ever realizing the total time budget has long exceeded the original estimate.</p><hr><p>Now, as an engineer, I spend most of my time on the command line. It is often the fastest way to achieve things, and the power of unix pipes allows for infinite
+chaining of commands. Using an existing CLI framework, implementing new features is also much faster of a task than having to build a GUI! This lead me to creating
+our very own, company-internal CLI application to provide the leanest possible abstraction layer over every single piece of engineer interaction.</p><p>As we use PHP for pretty much everything&mdash;even <a class=link href=https://www.moritzfriedrich.com/projects/massively-parallel-php/>horizontally scalable, threaded workers</a>
+&mdash;it was clear we&rsquo;d use our own
+flavor of <a class=link href=https://symfony.com/doc/current/components/console.html target=_blank rel="noreferrer noopener">Symfony Console</a>
+for the job. While the console component is awesome, it is a little verbose for
+my taste. As we keep our business logic in <a class=link href=https://www.moritzfriedrich.com/projects/application-framework/>a custom &ldquo;framework&rdquo;</a>
+anyway, it made sense to create a set of decorator
+components that add all helpers we commonly need and make sure dependency injection works properly. For example, Symfony gives us
+<a class=link href=https://symfony.com/doc/current/components/console/helpers/table.html target=_blank rel="noreferrer noopener">the option to create tables</a>
+, like so:</p><div class=highlight><pre class=chroma><code class=language-php data-lang=php><span class=cp>&lt;?php</span> <span class=c1># Opening tag required due to https://github.com/alecthomas/chroma/issues/210
+</span><span class=c1></span><span class=nv>$table</span> <span class=o>=</span> <span class=k>new</span> <span class=nx>Table</span><span class=p>(</span><span class=nv>$output</span><span class=p>);</span>
+<span class=nv>$table</span>
+    <span class=o>-&gt;</span><span class=na>setHeaders</span><span class=p>([</span><span class=s1>&#39;ISBN&#39;</span><span class=p>,</span> <span class=s1>&#39;Title&#39;</span><span class=p>,</span> <span class=s1>&#39;Author&#39;</span><span class=p>])</span>
+    <span class=o>-&gt;</span><span class=na>setRows</span><span class=p>([</span>
+        <span class=p>[</span><span class=s1>&#39;99921-58-10-7&#39;</span><span class=p>,</span> <span class=s1>&#39;Divine Comedy&#39;</span><span class=p>,</span> <span class=s1>&#39;Dante Alighieri&#39;</span><span class=p>],</span>
+        <span class=p>[</span><span class=s1>&#39;9971-5-0210-0&#39;</span><span class=p>,</span> <span class=s1>&#39;A Tale of Two Cities&#39;</span><span class=p>,</span> <span class=s1>&#39;Charles Dickens&#39;</span><span class=p>],</span>
+        <span class=p>[</span><span class=s1>&#39;960-425-059-0&#39;</span><span class=p>,</span> <span class=s1>&#39;The Lord of the Rings&#39;</span><span class=p>,</span> <span class=s1>&#39;J. R. R. Tolkien&#39;</span><span class=p>],</span>
+        <span class=p>[</span><span class=s1>&#39;80-902734-1-6&#39;</span><span class=p>,</span> <span class=s1>&#39;And Then There Were None&#39;</span><span class=p>,</span> <span class=s1>&#39;Agatha Christie&#39;</span><span class=p>],</span>
+    <span class=p>]);</span>
+<span class=nv>$table</span><span class=o>-&gt;</span><span class=na>render</span><span class=p>();</span>
+</code></pre></div><p>This is fine, but the requirement to specify the table headers makes it a little laborious when working with multi-dimensional data structures. Compare this to our
+table wrapper:</p><div class=highlight><pre class=chroma><code class=language-php data-lang=php><span class=cp>&lt;?php</span> <span class=c1># Opening tag required due to https://github.com/alecthomas/chroma/issues/210
+</span><span class=c1></span><span class=nv>$this</span><span class=o>-&gt;</span><span class=na>table</span><span class=p>([</span>
+    <span class=p>[</span>
+        <span class=s1>&#39;ISBN&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;99921-58-10-7&#39;</span><span class=p>,</span>
+        <span class=s1>&#39;Title&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;Divine Comedy&#39;</span><span class=p>,</span>
+        <span class=s1>&#39;Author&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;Dante Alighieri&#39;</span>
+    <span class=p>],</span>
+    <span class=p>[</span>
+        <span class=s1>&#39;ISBN&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;9971-5-0210-0&#39;</span><span class=p>,</span>
+        <span class=s1>&#39;Title&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;A Tale of Two Cities&#39;</span><span class=p>,</span>
+        <span class=s1>&#39;Author&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;Charles Dickens&#39;</span>
+    <span class=p>],</span>
+    <span class=p>[</span>
+        <span class=s1>&#39;ISBN&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;960-425-059-0&#39;</span><span class=p>,</span>
+        <span class=s1>&#39;Title&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;The Lord of the Rings&#39;</span><span class=p>,</span>
+        <span class=s1>&#39;Author&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;J. R. R. Tolkien&#39;</span>
+    <span class=p>],</span>
+    <span class=p>[</span>
+        <span class=s1>&#39;ISBN&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;80-902734-1-6&#39;</span><span class=p>,</span>
+        <span class=s1>&#39;Title&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;And Then There Were None&#39;</span><span class=p>,</span>
+        <span class=s1>&#39;Author&#39;</span> <span class=o>=&gt;</span> <span class=s1>&#39;Agatha Christie&#39;</span>
+    <span class=p>],</span>
+<span class=p>]);</span>
+</code></pre></div><p>This is much better when working with possibly-unknown records, and it also frees us from having to statically define properties we want to see when querying a data
+set! Both examples above result in the same table being written.</p><p><strong>What do we need this for, however?</strong> Easy: I built a command line application with the ability to perform CRUD on database resources with the minimum amount of
+code possible, allowing to list, filter, sort, search and paginate records, as well as deleting, updating and creating individual records. Obviously, this is a
+pretty dangerous tool, so it&rsquo;s limited to engineers: The CLI requires a configuration (.env) file in the user home directory with their database credentials. This
+ensures only those with actual database access can use the tool. How does this look like in practice, though?</p><p><strong>Listing records:</strong></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=c1># Show the third page with 10 records per page of customers created since</span> 
+<span class=c1># the first of january, 2020 whose name contains &#34;moritz&#34; and sort them</span> 
+<span class=c1># by their name ascending, then by creation date descending.</span>
+console customers:list <span class=se>\
+</span><span class=se></span>    --filter created_at&gt;01-01-2020 <span class=se>\
+</span><span class=se></span>    --filter name:moritz <span class=se>\
+</span><span class=se></span>    --page <span class=m>3</span> <span class=se>\
+</span><span class=se></span>    --per-page <span class=m>10</span> <span class=se>\
+</span><span class=se></span>    --sort name <span class=se>\
+</span><span class=se></span>    --sort created_at <span class=se>\
+</span><span class=se></span>    --descending created_at
+
+<span class=c1># ...or using the shorthands:</span>
+console customers:list <span class=se>\
+</span><span class=se></span>    -f created_at&gt;01-01-2020 <span class=se>\
+</span><span class=se></span>    -f name:moritz <span class=se>\
+</span><span class=se></span>    -p <span class=m>3</span> <span class=se>\
+</span><span class=se></span>    -P <span class=m>10</span> <span class=se>\
+</span><span class=se></span>    -s name <span class=se>\
+</span><span class=se></span>    -s created_at <span class=se>\
+</span><span class=se></span>    -d created_at
+</code></pre></div><p><strong>Retrieving individual records:</strong></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=c1># Find a customer whose UUID contains 3eaa3b18. We need the column/c option because</span>
+<span class=c1># it isn&#39;t the primary key of the customers table.</span>
+console customers:find 3eaa3b18 <span class=se>\
+</span><span class=se></span>    --column<span class=o>=</span>uuid
+
+<span class=c1># Find a customer by its (primary key) ID:</span>
+console customers:find <span class=m>42223218</span>
+
+<span class=c1># Find a customer by its exact name:</span>
+console customers:find <span class=s2>&#34;Moritz Friedrich&#34;</span> <span class=se>\
+</span><span class=se></span>    --column<span class=o>=</span>name <span class=se>\
+</span><span class=se></span>    --exact
+</code></pre></div><p><strong>Updating records:</strong></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=c1># Update a customer identified by their ID</span>
+console customers:update <span class=m>42223218</span> <span class=se>\
+</span><span class=se></span>    <span class=nv>address</span><span class=o>=</span><span class=s2>&#34;Testlane 123, 74253 Testville&#34;</span> <span class=se>\
+</span><span class=se></span>    <span class=nv>invoice_email</span><span class=o>=</span><span class=s2>&#34;test@example.com&#34;</span>
+
+<span class=c1># Update a customer identified by their exact name</span>
+console customers:update <span class=s2>&#34;Moritz Friedrich&#34;</span> <span class=se>\
+</span><span class=se></span>    --column<span class=o>=</span>name <span class=se>\
+</span><span class=se></span>    --exact <span class=se>\
+</span><span class=se></span>    <span class=nv>address</span><span class=o>=</span><span class=s2>&#34;Testlane 123, 74253 Testville&#34;</span> <span class=se>\
+</span><span class=se></span>    <span class=nv>invoice_email</span><span class=o>=</span><span class=s2>&#34;test@example.com&#34;</span>
+</code></pre></div><p><strong>Deleting records:</strong></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=c1># Delete a customer identified by their ID</span>
+console customers:delete <span class=m>42223218</span>
+
+<span class=c1># Delete a customer identified by their exact name</span>
+console customers:delete <span class=s2>&#34;Moritz Friedrich&#34;</span> <span class=se>\
+</span><span class=se></span>    --column<span class=o>=</span>name <span class=se>\
+</span><span class=se></span>    --exact
+</code></pre></div><p><strong>Creating records:</strong></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=c1># Create a new customer</span>
+console customers:create <span class=se>\
+</span><span class=se></span>    <span class=nv>name</span><span class=o>=</span><span class=s2>&#34;Moritz Friedrich&#34;</span> <span class=se>\
+</span><span class=se></span>    <span class=nv>address</span><span class=o>=</span><span class=s2>&#34;Testlane 123, 74253 Testville&#34;</span> <span class=se>\
+</span><span class=se></span>    <span class=nv>invoice_email</span><span class=o>=</span><span class=s2>&#34;test@example.com&#34;</span>
+</code></pre></div><p>Now, I think that&rsquo;s pretty cool: Imagine writing those queries by hand every time! Let&rsquo;s look behind the scenes, though. The way the console component works is that
+you need to register individual command classes that handle those calls, so usually, we&rsquo;d need to create separate classes here: <code>ListCustomersCommand</code>,
+<code>FindCustomerCommand</code>, <code>UpdateCustomerCommand</code>, <code>DeleteCustomerCommand</code> and <code>CreateCustomerCommand</code> in this case. Even if those had base classes that did most of
+the work, that&rsquo;d still be <em>lots</em> of boilerplate. So as a much quicker alternative, I built an abstract <code>CrudCommandCollection</code> class which registers all those
+commands automatically upon invocation. This leaves us with the following class, named <code>CustomerCommandCollection</code>:</p><div class=highlight><pre class=chroma><code class=language-php data-lang=php><span class=cp>&lt;?php</span> <span class=c1># Opening tag required due to https://github.com/alecthomas/chroma/issues/210
+</span><span class=c1></span><span class=k>class</span> <span class=nc>CustomerCommandCollection</span> <span class=k>extends</span> <span class=nx>CrudCommandCollection</span>
+<span class=p>{</span>
+    <span class=k>protected</span> <span class=nx>string</span> <span class=nv>$table</span> <span class=o>=</span> <span class=s1>&#39;customers&#39;</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><p>Yep, I&rsquo;m not kidding. <strong>All the functionality above</strong> and quite a few features I didn&rsquo;t even mention yet are completely covered by the above class! As that single
+property might hint on, things can be customized by setting several properties or implementing protected methods&mdash;all of that is optional though, to reduce the
+friction required to support new resources as much as possible.<br>Nevertheless, all text printed to the screen, all queries executed against the database, all properties displayed and all data formatted have hooks to be
+overwritten.</p></main><div class=bottom-menu><hr><nav><a href=/posts>blog</a>&nbsp;&#183;&nbsp;<a href=https://github.com/Radiergummi>github</a>&nbsp;&#183;&nbsp;<a href=/about>about</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/imprint/>imprint</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/privacy/>privacy</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/>home</a></nav></div><div class=page-footer><script data-goatcounter=https://stats.9dev.de/count async src=https://stats.9dev.de/count.js></script><script></script></div></div></body></html>
