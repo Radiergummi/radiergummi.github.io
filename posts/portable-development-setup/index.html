@@ -1,0 +1,418 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=referrer content="no-referrer-when-downgrade"><meta name=coverage content="Worldwide"><meta name=distribution content="Global"><meta name=HandheldFriendly content="True"><meta name=msapplication-tap-highlight content="no"><base href=https://www.moritzfriedrich.com/posts/portable-development-setup/><link rel=canonical href=https://www.moritzfriedrich.com/posts/portable-development-setup/ itemprop=url><link rel=sitemap type=application/xml title=Sitemap href=https://www.moritzfriedrich.com/sitemap.xml><meta name=url content="https://www.moritzfriedrich.com/posts/portable-development-setup/"><meta name=twitter:url content="https://www.moritzfriedrich.com/posts/portable-development-setup/"><meta property="og:url" content="https://www.moritzfriedrich.com/posts/portable-development-setup/"><meta name=description content="moritz friedrich, yet another full-stack developer."><meta itemprop=description content="moritz friedrich, yet another full-stack developer."><meta property="og:description" content="moritz friedrich, yet another full-stack developer."><meta name=twitter:description content="moritz friedrich, yet another full-stack developer."><meta property="og:locale" content="en"><meta name=language content="en"><meta property="og:title" content="Portable Development Setup | Moritz Friedrich"><meta name=twitter:title content="Portable Development Setup | Moritz Friedrich"><meta itemprop=name content="Portable Development Setup | Moritz Friedrich"><meta name=application-name content="Portable Development Setup | Moritz Friedrich"><meta property="og:site_name" content><meta name=twitter:site content><meta name=twitter:creator content><meta property="fb:app_id" content><meta property="fb:admins" content><meta itemprop=image content="https://www.moritzfriedrich.com/"><meta property="og:image" content="https://www.moritzfriedrich.com/"><meta name=twitter:image content="https://www.moritzfriedrich.com/"><meta name=twitter:image:src content="https://www.moritzfriedrich.com/"><meta property="og:type" content="article"><meta property="article:publisher" content><meta property="og:article:published_time" content="2020-08-23T09:52:08Z"><meta property="article:published_time" content="2020-08-23T09:52:08Z"><meta property="og:updated_time" content="2020-08-23T09:52:08Z"><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color=#2b5797><meta name=msapplication-TileColor content="#2b5797"><meta name=theme-color content="#ffffff"><script defer type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"Portable Development Setup","description":"Due to switching jobs, and my beloved 2013-ish MacBook Pro finally failing on me for good, I\u0026rsquo;m in a somewhat unsuspected situation: The only computing devices available to me are my smartphone and an old Chromebook which Google gifted to me at MessengerPeople, so we could have a Meet coversation with their sales people.\nIt is a rather old and cheap model, with a slow dual core CPU and 3GB of RAM\u0026ndash;all in all, the last thing you\u0026rsquo;d probably want to do any reasonable software development on.","image":"https://www.moritzfriedrich.com/","datePublished":"2020-08-23T09:52:08Z","dateModified":"2020-08-23T09:52:08Z","wordCount":"2926","author":{"@type":"Person","name":""},"mainEntityOfPage":{"@type":"WebPage","@id":"https://www.moritzfriedrich.com/"},"publisher":{"@type":"Person","name":""},"keywords":["blog","chromebook","development"]}</script><link rel=stylesheet href=/css/style.min.1a74b97b18688690f2a48f70769c7bb1d5c9c4e6df98c90ad5d76ae6047647e3.css integrity="sha256-GnS5exhohpDypI9wdpx7sdXJxObfmMkK1ddq5gR2R+M=" crossorigin=anonymous media=screen><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Didact+Gothic|Fira+Code"><title>Portable Development Setup</title></head><body><div class=wrap><header class=page-header id=title><h1 class=page-title>Portable Development Setup</h1></header><div class=page-content id=content>Sunday, 23. August 2020 &#183; 14 minutes<div class=tags><span class=tags__tag><a href=https://www.moritzfriedrich.com/tags/blog>blog</a></span>
+<span class=tags__tag><a href=https://www.moritzfriedrich.com/tags/chromebook>chromebook</a></span>
+<span class=tags__tag><a href=https://www.moritzfriedrich.com/tags/development>development</a></span></div><p>Due to switching jobs, and my beloved 2013-ish MacBook Pro finally failing on me for good, I&rsquo;m in a
+somewhat unsuspected situation: The only computing devices available to me are my smartphone and an
+old Chromebook which Google gifted to me at MessengerPeople, so we could have a Meet coversation with
+their sales people.<br>It is a rather old and cheap model, with a slow dual core CPU and 3GB of RAM&ndash;all in all, the last
+thing you&rsquo;d probably want to do any reasonable software development on.</p><p>Now, what is <em>also</em> special about the current situation is that I absolutely have the time to
+follow stupid ideas all the way through! Assessing the situation, I have a low-performance local
+device and a high(er)-performance VPS with Hetzner. Pretty much what the picture looked like to
+mainframe operators in prior decades: They solved the demand for workstations by using cheap thin
+clients connecting to the expensive mainframe backend, and this is exactly what we&rsquo;re going to
+do&ndash;<em>build a portable development environment, accessible from any type of low-power device over the
+internet.</em></p><p>TL;DR The code is available on GitHub:
+<a class=link href=https://github.com/Radiergummi/portable-development-environment target=_blank rel="noreferrer noopener">Radiergummi/portable-development-environment</a>
+.</p><h2 id=choosing-the-components class="heading heading--2"><a class=heading__anchor href=#choosing-the-components>Choosing the components</a></h2><p>Usually, I work with <a class=link href=https://www.jetbrains.com/phpstorm/ target=_blank rel="noreferrer noopener">Jetbrains&rsquo; PhpStorm</a>
+exclusively, which is
+pretty much the gold-standard in IDEs to me. Its heaps of features and convenient auto-completion of
+course come at a price, though, which is the amount of compute resources and memory it guzzles.
+Intellij, the Jetbrains platform, is built on Java (probably Kotlin, by now), and its definitely
+showing. Therefore, PhpStorm is out of the question.<br>Looking around for lighter solutions, I first took a look at web-based code editors, available as Chrome
+apps, such as <a class=link href=http://thomaswilburn.net/caret/ target=_blank rel="noreferrer noopener">Caret</a>
+. That might be a viable solution if you&rsquo;re only
+looking to write markdown documentation or something, but it&rsquo;s certainly unsuitable for actual software
+development.<br>Finally, I learned about <a class=link href=https://github.com/cdr/code-server target=_blank rel="noreferrer noopener"><code>code-server</code></a>
+, which is basically just a
+headless Visual Studio Code, accessible via HTTP, rendering in a client browser instead of Electron.
+This makes a lots of sense in a way&ndash;if an application works exclusively using web tech already, there&rsquo;s
+no reason not to make use of it. <code>code-server</code> is maintained by <a class=link href=https://coder.com/ target=_blank rel="noreferrer noopener">Coder</a>
+, which more
+or less provide a battle-tested, commercial variant of what I&rsquo;m attempting to do, so check it out if
+you&rsquo;re interested.<br>While <code>code-server</code> has sort-of authentication built in, I&rsquo;m not going to rely on it. Having an IDE with
+a shell and file system access exposed over the internet is risky enough already, so instead, we&rsquo;ll need
+some sort of authentication proxy between the web and the application. To model the flow of HTTP
+requests, I usually rely <a class=link href=https://nginx.org/ target=_blank rel="noreferrer noopener">nginx</a>
+, which has us covered here: By using the
+<a class=link href=https://nginx.org/en/docs/http/ngx_http_auth_request_module.html target=_blank rel="noreferrer noopener"><code>auth-request</code> module</a>
+, we can
+authorize all requests for a given location. This module merely queries another HTTP endpoint, passes
+the original request, and evaluates the status code of the authorization server response to decide
+whether to deny or forward the client request.<br>There are sveral solutions available for such an authentication proxy, but I decided to go with
+<a class=link href=https://github.com/vouch/vouch-proxy target=_blank rel="noreferrer noopener">Vouch Proxy</a>
+, as it is straight-forward to setup and does exactly
+what I want it to, namely forward authentication to an OAuth2 provider of my choice!</p><p>As soon as the number of applications involved in a system grows, I host them with Docker. This might
+seem overkill, but after years of setting up and maintaining Linux servers, I&rsquo;m no longer inclined to
+waste time here when I could simply define the full stack with docker-compose and move on. Therefore, my
+VPS is essentially just a (hardened) Docker host.</p><p>So to sum up, we need a compose stack with:</p><ul><li><strong>code-server</strong>, a web-based IDE</li><li><strong>vouch-proxy</strong>, an authentication proxy</li><li><strong>nginx</strong>, a reverse proxy server</li><li>A plethora of development tools such as node, php, composer etc., which we&rsquo;ll get to later</li></ul><p>Finishing off, we will also need a domain for our IDE and one for vouch, both of which require an SSL
+certificate to be served securely. This will actually be pretty expensive, because&mldr; ha, just kidding!
+It&rsquo;s 2020, Let&rsquo;s Encrypt is everywhere and for the life of me I will <em>never</em> buy a certificate again.</p><h2 id=preparing-the-chromebook class="heading heading--2"><a class=heading__anchor href=#preparing-the-chromebook>Preparing the Chromebook</a></h2><p>I&rsquo;m going to skip the introduction to Chromebooks here, suffice it to say, they run a heavily
+customized, Google derivate of Gentoo, basically only exposing the Chrome browser as its user interface.
+For some reason, I suspect users bugging Google, ChromeOS got the capability to run a Linux <em>&ldquo;VM&rdquo;</em>
+(there&rsquo;s a super-interesting description of its internals
+<a class=link href=https://chromium.googlesource.com/chromiumos/docs/+/master/containers_and_vms.md target=_blank rel="noreferrer noopener">available here</a>
+,
+which also explains why VM has quotes around it). This is integrated elegantly into the system, enabled
+with only a few clicks in the UI, and amounts to a Debian shell with password-less sudo.</p><p>To enable the Linux VM, simply open the settings app, navigate to <em>Linux (Beta)</em>, and follow the wizard.
+As soon as the shell window pops up, we&rsquo;re ready to continue to the server side of things. Let&rsquo;s quickly
+generate an SSH key and dial in to the box:</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash>ssh-keygen -o -a <span class=m>100</span> -t ed25519 -f ~/.ssh/id_ed25519 -C <span class=s2>&#34;Chromebook&#34;</span>
+ssh-copy-id moritz@my-vps.example.com
+ssh moritz@my-vps.example.com
+</code></pre></div><h2 id=preparing-the-server class="heading heading--2"><a class=heading__anchor href=#preparing-the-server>Preparing the server</a></h2><p>I&rsquo;m assuming a fresh, uninitialized server, updates installed and hardened security. I&rsquo;m probably
+going to do a write-up of that in another post soon.</p><h3 id=setting-up-docker class="heading heading--3"><a class=heading__anchor href=#setting-up-docker>Setting up Docker</a></h3><p>First up, let&rsquo;s install Docker <em>the recommended way</em>. Despite the
+<a class=link href=https://docs.docker.com/engine/install/ubuntu/ target=_blank rel="noreferrer noopener">documentation being quite clear</a>
+on this, I&rsquo;ve
+seen people do an <code>apt install docker</code> way too often. So doing this correctly involves exactly the
+following steps:</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=c1># Install base dependencies</span>
+sudo apt-get update <span class=o>&amp;&amp;</span> sudo apt-get install -y <span class=se>\
+</span><span class=se></span>    apt-transport-https <span class=se>\
+</span><span class=se></span>    ca-certificates <span class=se>\
+</span><span class=se></span>    curl <span class=se>\
+</span><span class=se></span>    gnupg-agent <span class=se>\
+</span><span class=se></span>    software-properties-common
+
+<span class=c1># Add Docker’s official GPG key</span>
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg <span class=p>|</span> sudo apt-key add -
+
+<span class=c1># Add the Docker apt repository</span>
+sudo add-apt-repository <span class=se>\
+</span><span class=se></span>   <span class=s2>&#34;deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+</span><span class=s2>   </span><span class=k>$(</span>lsb_release -cs<span class=k>)</span><span class=s2> \
+</span><span class=s2>   stable&#34;</span>
+
+<span class=c1># Finally, install the Docker packages</span>
+sudo apt-get update <span class=o>&amp;&amp;</span> sudo apt-get install -y <span class=se>\
+</span><span class=se></span>    docker-ce <span class=se>\
+</span><span class=se></span>    docker-ce-cli <span class=se>\
+</span><span class=se></span>    containerd.io
+</code></pre></div><p>Now you&rsquo;ve got Docker installed, but you&rsquo;re still not able to use it without root privileges. The
+internet contains approximately a gazillion issues on this, but the solution is quite simple! We
+just need a group for Docker, and our user needs to be a part of it:</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=c1># Add the Docker OS group</span>
+sudo groupadd docker
+
+<span class=c1># Add your own user to the Docker group</span>
+sudo usermod -aG docker <span class=nv>$USER</span>
+
+<span class=c1># Apply group changes without having to log off and back in again</span>
+newgrp docker
+</code></pre></div><p>We probably want Docker to start on boot:</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash>sudo systemctl <span class=nb>enable</span> docker
+</code></pre></div><h3 id=designing-the-compose-stack class="heading heading--3"><a class=heading__anchor href=#designing-the-compose-stack>Designing the compose stack</a></h3><p>What I like a lot about docker-compose stacks is that we can design it iteratively - get the basics
+to work, refine the services, restart. So let&rsquo;s start by defining the raw services:</p><div class=highlight><pre class=chroma><code class=language-yaml data-lang=yaml><span class=k>version</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;3.7&#39;</span><span class=w>
+</span><span class=w></span><span class=k>services</span><span class=p>:</span><span class=w>
+</span><span class=w>    </span><span class=k>front-proxy</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span><span class=k>image</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;nginx:latest&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>restart</span><span class=p>:</span><span class=w> </span>always<span class=w>
+</span><span class=w>        </span><span class=k>ports</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=m>80</span><span class=w>
+</span><span class=w>            </span>- <span class=m>443</span><span class=w>
+</span><span class=w>
+</span><span class=w>    </span><span class=k>auth-proxy</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span><span class=k>image</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;voucher/vouch-proxy:latest&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>restart</span><span class=p>:</span><span class=w> </span>always<span class=w>
+</span><span class=w>        </span><span class=k>expose</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=m>8080</span><span class=w>
+</span><span class=w>
+</span><span class=w>    </span><span class=k>ide</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span><span class=k>build</span><span class=p>:</span><span class=w> </span>.<span class=w>
+</span><span class=w>        </span><span class=k>restart</span><span class=p>:</span><span class=w> </span>always<span class=w>
+</span><span class=w>        </span><span class=k>expose</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=m>8080</span><span class=w>
+</span></code></pre></div><p>Here, we define our three components and the way network communication is intended to flow: The front
+proxy (nginx) will listen on ports <code>80</code> and <code>443</code> of the host itself, so it&rsquo;s the entry point into our
+system, from the internet.</p><h3 id=configuring-nginx class="heading heading--3"><a class=heading__anchor href=#configuring-nginx>Configuring nginx</a></h3><p>We will configure nginx to forward requests for the IDE to the <code>ide</code> service, and authentication requests
+to <code>auth-proxy</code> next. To do so, we add our configuration files:</p><div class=highlight><pre class=chroma><code class=language-yaml data-lang=yaml><span class=w>    </span><span class=k>front-proxy</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span><span class=k>image</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;nginx:latest&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>restart</span><span class=p>:</span><span class=w> </span>always<span class=w>
+</span><span class=w>        </span><span class=k>volumes</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./nginx.conf:/etc/nginx/nginx.conf&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>ports</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=m>80</span><span class=w>
+</span><span class=w>            </span>- <span class=m>443</span><span class=w>
+</span></code></pre></div><p>Here, we override the main nginx configuration file with our own. It should look like the following,
+with the default values omitted for brevity:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>http</span> <span class=p>{</span>
+    <span class=c1># basic settings, logging, gzip etc.
+</span><span class=c1></span>
+    <span class=kn>server</span> <span class=p>{</span>
+        <span class=kn>server_name</span> <span class=s>vouch.example.com</span><span class=p>;</span>
+
+        <span class=kn>location</span> <span class=s>/</span> <span class=p>{</span>
+            <span class=kn>proxy_pass</span> <span class=s>http://auth-proxy:8080</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>Host</span> <span class=nv>$http_host</span><span class=p>;</span>
+        <span class=p>}</span>
+
+        <span class=kn>listen</span> <span class=mi>80</span><span class=p>;</span>
+    <span class=p>}</span>
+
+    <span class=kn>server</span> <span class=p>{</span>
+        <span class=kn>server_name</span> <span class=s>ide.example.com</span><span class=p>;</span>
+
+        <span class=kn>location</span> <span class=s>/</span> <span class=p>{</span>
+            <span class=kn>proxy_pass</span>                         <span class=s>http://ide:8080</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>Host</span>              <span class=nv>$http_host</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>X-Real-IP</span>         <span class=nv>$remote_addr</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>X-Forwarded-For</span>   <span class=nv>$proxy_add_x_forwarded_for</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>X-Forwarded-Proto</span> <span class=nv>$scheme</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>Upgrade</span>           <span class=nv>$http_upgrade</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>Connection</span>        <span class=s>upgrade</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>Accept-Encoding</span>   <span class=s>gzip</span><span class=p>;</span>
+        <span class=p>}</span>
+        
+        <span class=kn>listen</span> <span class=mi>80</span><span class=p>;</span>
+
+        <span class=c1># Any request to this server will first be sent to this URL
+</span><span class=c1></span>        <span class=kn>auth_request</span> <span class=s>/vouch-validate</span><span class=p>;</span>
+
+        <span class=kn>location</span> <span class=p>=</span> <span class=s>/vouch-validate</span> <span class=p>{</span>
+            <span class=c1># This address is where Vouch will be listening on
+</span><span class=c1></span>            <span class=kn>proxy_pass</span> <span class=s>http://auth-proxy:8080/validate</span><span class=p>;</span>
+            <span class=kn>proxy_pass_request_body</span> <span class=no>off</span><span class=p>;</span>
+
+            <span class=kn>proxy_set_header</span> <span class=s>Content-Length</span>    <span class=s>&#34;&#34;</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>X-Real-IP</span>         <span class=nv>$remote_addr</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>X-Forwarded-For</span>   <span class=nv>$proxy_add_x_forwarded_for</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>X-Forwarded-Proto</span> <span class=nv>$scheme</span><span class=p>;</span>
+            <span class=kn>proxy_set_header</span> <span class=s>Host</span>              <span class=nv>$http_host</span><span class=p>;</span>
+
+            <span class=kn>auth_request_set</span> <span class=nv>$auth_resp_jwt</span>          <span class=nv>$upstream_http_x_vouch_jwt</span><span class=p>;</span>
+            <span class=kn>auth_request_set</span> <span class=nv>$auth_resp_err</span>          <span class=nv>$upstream_http_x_vouch_err</span><span class=p>;</span>
+            <span class=kn>auth_request_set</span> <span class=nv>$auth_resp_failcount</span>    <span class=nv>$upstream_http_x_vouch_failcount</span><span class=p>;</span>
+            <span class=kn>auth_request_set</span> <span class=nv>$auth_resp_x_vouch_user</span> <span class=nv>$upstream_http_x_vouch_user</span><span class=p>;</span>
+        <span class=p>}</span>
+
+        <span class=kn>error_page</span> <span class=mi>401</span> <span class=p>=</span> <span class=s>@error401</span><span class=p>;</span>
+
+        <span class=c1># If the user is not logged in, redirect them to Vouch&#39;s login URL
+</span><span class=c1></span>        <span class=kn>location</span> <span class=s>@error401</span> <span class=p>{</span>
+            <span class=kn>return</span> <span class=mi>302</span> <span class=s>https://vouch.example.com/login?url=https://</span><span class=nv>$http_host$request_uri&amp;vouch-failcount=$auth_resp_failcount&amp;X-Vouch-Token=$auth_resp_jwt&amp;error=$auth_resp_err</span><span class=p>;</span>
+        <span class=p>}</span>
+    <span class=p>}</span>
+<span class=p>}</span>
+</code></pre></div><p>This configuration defines two virtual servers: One for vouch, our authentication proxy, and one for the
+actual application. The vouch server simply passes requests to the vouch service defined in our
+docker-compose configuration&ndash;we can take advantage of the fact that Docker even handles the name
+resolution for us.<br>The second server for our application also passes requests to the application service, sets a bunch of
+request headers, but more importantly: It enables the <code>auth_request</code> module and configures nginx to pass
+all requests to the vouch validation endpoint first. Vouch checks whether the request is authenticated,
+and either redirects them to the login page or signals nginx to let the request pass through to our app.</p><p>If you&rsquo;ve looked carefully, you might notice both blocks listen on port 80, with no mention of SSL yet.
+Getting Let&rsquo;s Encrypt certificates and their renewal to play nicely with Docker requires some effort, so
+we&rsquo;ll get back to that later on.</p><h3 id=configuring-vouch class="heading heading--3"><a class=heading__anchor href=#configuring-vouch>Configuring vouch</a></h3><p>For vouch to actually validate requests for us, we&rsquo;ll need to tell it how to do so. While vouch actually
+supports environment variable configuration, I&rsquo;ve found it to be more convenient to use a configuration
+file instead. The first step is updating our compose configuration with the path to this file:</p><div class=highlight><pre class=chroma><code class=language-yaml data-lang=yaml><span class=w>    </span><span class=k>auth-proxy</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span><span class=k>image</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;voucher/vouch-proxy:latest&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>restart</span><span class=p>:</span><span class=w> </span>always<span class=w>
+</span><span class=w>        </span><span class=k>environment</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span><span class=k>VOUCH_CONFIG</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;/vouch.yaml&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>volumes</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./vouch.yaml:/vouch.yaml&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>expose</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=m>8080</span><span class=w>
+</span></code></pre></div><p>We set an environment variable that points to our configuration file (in the context of our container
+file system), then mount the file from the working directory to the configured container path.<br>The contents look akin to like the following:</p><div class=highlight><pre class=chroma><code class=language-yaml data-lang=yaml><span class=k>vouch</span><span class=p>:</span><span class=w>
+</span><span class=w>    </span><span class=k>logLevel</span><span class=p>:</span><span class=w> </span>info<span class=w>
+</span><span class=w>    </span><span class=k>testing</span><span class=p>:</span><span class=w> </span><span class=kc>false</span><span class=w>
+</span><span class=w>
+</span><span class=w>    </span><span class=c># We want to listen to all interfaces, as we&#39;re in a Docker</span><span class=w>
+</span><span class=w>    </span><span class=c># context. This will not expose vouch directly.</span><span class=w>
+</span><span class=w>    </span><span class=k>listen</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;0.0.0.0&#39;</span><span class=w>
+</span><span class=w>    </span><span class=k>port</span><span class=p>:</span><span class=w> </span><span class=m>8080</span><span class=w>
+</span><span class=w>
+</span><span class=w>    </span><span class=k>domains</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span>- vouch.example.com<span class=w>
+</span><span class=w>        </span>- ide.example.com<span class=w>
+</span><span class=w>        </span>- example.com<span class=w>
+</span><span class=w>
+</span><span class=w>    </span><span class=c># Make sure to point the cookie domain to your domain name.</span><span class=w>
+</span><span class=w>    </span><span class=c># It must be shared by the auth domain and the app domain.</span><span class=w>
+</span><span class=w>    </span><span class=k>cookie</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span><span class=k>domain</span><span class=p>:</span><span class=w> </span>example.com<span class=w>
+</span><span class=w>
+</span><span class=w>    </span><span class=c># Approve user account names here as necessary. Vouch has</span><span class=w>
+</span><span class=w>    </span><span class=c># more options to configure this, take a look at its docs.</span><span class=w>
+</span><span class=w>    </span><span class=k>whiteList</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span>- Radiergummi<span class=w>
+</span><span class=w>
+</span><span class=w></span><span class=k>oauth</span><span class=p>:</span><span class=w>
+</span><span class=w>    </span><span class=k>provider</span><span class=p>:</span><span class=w> </span>github<span class=w>
+</span><span class=w>    </span><span class=k>client_id</span><span class=p>:</span><span class=w> </span>ffffffff1c511ca9ebc9<span class=w>
+</span><span class=w>    </span><span class=k>client_secret</span><span class=p>:</span><span class=w> </span>ffffffffffe314b9315d4a1b9af487a75e72f32a<span class=w>
+</span><span class=w>    </span><span class=k>callback_url</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;https://vouch.example.com/auth&#39;</span><span class=w>
+</span><span class=w>    </span><span class=k>scopes</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span>- user<span class=w>
+</span></code></pre></div><p>It&rsquo;s important to get the domain list and OAuth provider configuration right. You&rsquo;ll probably want to
+set this up according to your liking, but I&rsquo;ve found maintaining an OAuth app with GitHub the easiest in
+the past&ndash;no extra hoops to jump through, and straight-forward documentation.<br>Take a look at the
+<a class=link href=https://github.com/vouch/vouch-proxy/blob/master/config/config.yml_example target=_blank rel="noreferrer noopener">example configuration file</a>
+for detailed information on the available directives.</p><h3 id=building-the-ide-image class="heading heading--3"><a class=heading__anchor href=#building-the-ide-image>Building the IDE image</a></h3><p>Now that we&rsquo;ve got the front proxy and the authentication proxy working, we can finally get to the most
+interesting part: The <code>ide</code> service and its Docker image. There&rsquo;s something important to understand about
+our setup: Visual Studio Code will, for all intents and purposes, run inside this Docker container. Any
+terminal opened in the UI will spawn inside this Docker container. Any files we&rsquo;ll be working with will
+live inside this Docker container.<br>This means that we are not just building a container for <code>code-server</code> to run in, but also an interactive
+development environment we should adjust to our requirements. The nice thing about that is that we&rsquo;re
+going to define our complete workspace with code!</p><p>So the first thing we&rsquo;re going to do is, again, adjusting the docker-compose configuration to mount our
+data properly:</p><div class=highlight><pre class=chroma><code class=language-yaml data-lang=yaml><span class=w>    </span><span class=k>ide</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span><span class=k>build</span><span class=p>:</span><span class=w> </span>.<span class=w>
+</span><span class=w>        </span><span class=k>restart</span><span class=p>:</span><span class=w> </span>always<span class=w>
+</span><span class=w>        </span><span class=k>expose</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=m>8080</span><span class=w>
+</span><span class=w>        </span><span class=k>volumes</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./code-server.yaml:/code-server.yaml&#39;</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./user-home:/user-home&#39;</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./user-data:/user-data&#39;</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./projects:/projects&#39;</span><span class=w>
+</span></code></pre></div><h4 id=mounted-volumes class="heading heading--4"><a class=heading__anchor href=#mounted-volumes>Mounted volumes</a></h4><p>As this container is our development environment, we want certain data to persist across restarts. Our volumes are used as follows:</p><ul><li><code>code-server.yaml</code>: A configuration file for code-server. It allows us to specify command-line flags to the
+executable without having to modify the <code>Dockerfile</code> later on.</li><li><code>user-home/</code>: The home directory of our developer user account <em>in the Docker image</em>. A bunch of
+important configuration files will live there.</li><li><code>user-data/</code>: The Visual Studio Code data directory, containing configuration files, installed
+extensions and so on.</li><li><code>projects/</code>: The project root directory for our version controlled project directories.</li></ul><p>We&rsquo;ll get to each of those in more detail later on. First, let&rsquo;s focus on the <code>Dockerfile</code>.</p><h4 id=the-dockerfile class="heading heading--4"><a class=heading__anchor href=#the-dockerfile>The &lt;code>Dockerfile&lt;/code></a></h4><p>It has actually two purposes: First is building <code>code-server</code>, second defining our runtime environment.
+That fits nicely with multi-stage builds! So first, let&rsquo;s define the build image only.</p><div class=highlight><pre class=chroma><code class=language-dockerfile data-lang=dockerfile><span class=k>FROM</span><span class=s> node:latest AS code-server-builder</span><span class=err>
+</span><span class=err></span><span class=k>WORKDIR</span><span class=s> /opt</span><span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Install code-server build dependencies</span><span class=err>
+</span><span class=err></span><span class=k>RUN</span> <span class=nb>set</span> -eux<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    apt-get update<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    apt-get install -y <span class=se>\
+</span><span class=se></span>        build-essential <span class=se>\
+</span><span class=se></span>        pkg-config <span class=se>\
+</span><span class=se></span>        libx11-dev <span class=se>\
+</span><span class=se></span>        libxkbfile-dev <span class=se>\
+</span><span class=se></span>        libsecret-1-dev<span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Install (and build) code-server</span><span class=err>
+</span><span class=err></span><span class=k>RUN</span> yarn add code-server<span class=err>
+</span></code></pre></div><p>This will install the <code>code-server</code> package and subsequently build it, resulting in a <code>node_modules/</code>
+directory containing the server binary and all dependencies.<br>As the next step, we want to define the runtime environment. This is heavily specific for your own
+workflow, so I&rsquo;ll keep this as generic as possible:</p><div class=highlight><pre class=chroma><code class=language-dockerfile data-lang=dockerfile><span class=k>FROM</span><span class=s> node:latest AS code-server-builder</span><span class=err>
+</span><span class=err></span><span class=k>WORKDIR</span><span class=s> /opt</span><span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Install code-server build dependencies</span><span class=err>
+</span><span class=err></span><span class=k>RUN</span> <span class=nb>set</span> -eux<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    apt-get update<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    apt-get install -y <span class=se>\
+</span><span class=se></span>        build-essential <span class=se>\
+</span><span class=se></span>        pkg-config <span class=se>\
+</span><span class=se></span>        libx11-dev <span class=se>\
+</span><span class=se></span>        libxkbfile-dev <span class=se>\
+</span><span class=se></span>        libsecret-1-dev<span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Install (and build) code-server</span><span class=err>
+</span><span class=err></span><span class=k>RUN</span> yarn add code-server<span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c>#</span><span class=err>
+</span><span class=err></span><span class=c># Actual runtime environment definition</span><span class=err>
+</span><span class=err></span><span class=c>#</span><span class=err>
+</span><span class=err></span><span class=k>FROM</span><span class=s> ubuntu:latest</span><span class=err>
+</span><span class=err></span><span class=k>WORKDIR</span><span class=s> /opt</span><span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Install development dependencies</span><span class=err>
+</span><span class=err></span><span class=k>RUN</span> <span class=nb>set</span> -eux<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    apt-get update<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    apt-get install -y <span class=se>\
+</span><span class=se></span>    apt-transport-https <span class=se>\
+</span><span class=se></span>    git <span class=se>\
+</span><span class=se></span>    curl <span class=se>\
+</span><span class=se></span>    gnupg <span class=se>\
+</span><span class=se></span>    nano<span class=p>;</span><span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Install node.js</span><span class=err>
+</span><span class=err></span><span class=k>RUN</span> <span class=nb>set</span> -eux<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    curl -sL https://deb.nodesource.com/setup_14.x <span class=p>|</span> bash -<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    apt-get update<span class=p>;</span> <span class=se>\
+</span><span class=se></span>    apt-get -y install nodejs<span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Copy the actually built code-server</span><span class=err>
+</span><span class=err></span><span class=k>COPY</span> --from<span class=o>=</span>code-server-builder /opt/node_modules /opt/node_modules<span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Add the home directory of our user as a volume</span><span class=err>
+</span><span class=err></span><span class=k>VOLUME</span><span class=s> /user-home</span><span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Create the &#34;developer&#34; user in the container</span><span class=err>
+</span><span class=err></span><span class=k>RUN</span> groupadd --gid <span class=m>5000</span> developer <span class=o>&amp;&amp;</span> <span class=se>\
+</span><span class=se></span>    useradd --home-dir /user-home <span class=se>\
+</span><span class=se></span>        --uid <span class=m>5000</span> <span class=se>\
+</span><span class=se></span>        --gid <span class=m>5000</span> <span class=se>\
+</span><span class=se></span>        --shell /bin/bash <span class=se>\
+</span><span class=se></span>        developer<span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Switch to the new user account</span><span class=err>
+</span><span class=err></span><span class=k>USER</span><span class=s> developer</span><span class=err>
+</span><span class=err>
+</span><span class=err></span><span class=c># Start code-server with our config file</span><span class=err>
+</span><span class=err></span><span class=k>CMD</span> <span class=p>[</span> <span class=s2>&#34;/opt/node_modules/.bin/code-server&#34;</span><span class=p>,</span> <span class=s2>&#34;--config&#34;</span><span class=p>,</span> <span class=s2>&#34;/code-server.yaml&#34;</span> <span class=p>]</span><span class=err>
+</span></code></pre></div><p>My setup starts from the <code>php-cli</code> image instead, installs xdebug, composer, yarn and a few other
+packages in addition to what you see above. As I said, this is very much the stuff you require for your
+own workflow, so customize this image as much as necessary.</p><p>Before we get to finally boot the stack, we&rsquo;ll have to adjust file system permissions on the host:</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash>mkdir user-home/ user-data/ projects/
+chown -R 5000:5000 user-home/ user-data/ projects/
+chmod -R <span class=m>755</span> user-home/ user-data/ projects/
+</code></pre></div><p>And create the configuration file for <code>code-server</code>:</p><div class=highlight><pre class=chroma><code class=language-yaml data-lang=yaml><span class=c># Again, we bind to all interfaces of the container only here</span><span class=w>
+</span><span class=w></span><span class=k>bind-addr</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;0.0.0.0:8080&#39;</span><span class=w>
+</span><span class=w>
+</span><span class=w></span><span class=c># As we have vouch taking care of authentication, we can skip it here</span><span class=w>
+</span><span class=w></span><span class=k>auth</span><span class=p>:</span><span class=w> </span>none<span class=w>
+</span><span class=w></span><span class=k>user-data-dir</span><span class=p>:</span><span class=w> </span>/user-data<span class=w>
+</span></code></pre></div><h3 id=configuring-nginx-part-2-https class="heading heading--3"><a class=heading__anchor href=#configuring-nginx-part-2-https>Configuring nginx, part 2: HTTPS</a></h3><p>If you&rsquo;re using Cloudflare or a similar service, you might want to consider skipping the Let&rsquo;s Encrypt
+part and simply configure your CDN to terminate HTTPS for you. Otherwise, read on for automatic renewal
+from within a Docker stack.</p><p>There is a guide by <a class=link href=https://github.com/wmnnd/ target=_blank rel="noreferrer noopener">@wmnnd</a>
+which descibes this process in greater detail available
+<a class=link href=https://medium.com/@pentacent/nginx-and-lets-encrypt-with-docker-in-less-than-5-minutes-b4b8a60d3a71 target=_blank rel="noreferrer noopener">on Medium</a>
+.</p><p>First off, we&rsquo;ll need to modify our front proxy service:</p><div class=highlight><pre class=chroma><code class=language-yaml data-lang=yaml><span class=w>    </span><span class=k>front-proxy</span><span class=p>:</span><span class=w>
+</span><span class=w>        </span><span class=k>image</span><span class=p>:</span><span class=w> </span><span class=s1>&#39;nginx:latest&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>restart</span><span class=p>:</span><span class=w> </span>always<span class=w>
+</span><span class=w>        </span><span class=k>volumes</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./nginx.conf:/etc/nginx/nginx.conf&#39;</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./certbot/conf:/etc/letsencrypt&#39;</span><span class=w>
+</span><span class=w>            </span>- <span class=s1>&#39;./certbot/www:/var/www/certbot&#39;</span><span class=w>
+</span><span class=w>        </span><span class=k>ports</span><span class=p>:</span><span class=w>
+</span><span class=w>            </span>- <span class=m>80</span><span class=w>
+</span><span class=w>            </span>- <span class=m>443</span><span class=w>
+</span><span class=w>        </span><span class=k>command</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;/bin/sh -c &#39;while :; do sleep 6h &amp; wait $${!}; nginx -s reload; done &amp; nginx -g \&#34;daemon off;\&#34;&#39;&#34;</span><span class=w>
+</span></code></pre></div><p>This adds a volume for certbot configuration and one for its web root to complete challenges, and overrides the nginx
+command so it will reload every six hours and apply eventually renewed certs.</p><p>The nginx configuration must be modified to have a new, HTTP-only server block:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>http</span> <span class=p>{</span>
+    <span class=c1># ...
+</span><span class=c1></span>
+    <span class=kn>server</span> <span class=p>{</span>
+        <span class=kn>listen</span> <span class=mi>80</span> <span class=s>default_server</span><span class=p>;</span>
+        <span class=kn>server_name</span> <span class=s>_</span><span class=p>;</span>
+
+        <span class=kn>location</span> <span class=s>/.well-known/acme-challenge/</span> <span class=p>{</span>
+            <span class=kn>root</span> <span class=s>/var/www/certbot</span><span class=p>;</span>
+        <span class=p>}</span>
+
+        <span class=kn>location</span> <span class=s>/</span> <span class=p>{</span>
+            <span class=kn>return</span> <span class=mi>301</span> <span class=s>https://</span><span class=nv>$host$request_uri</span><span class=p>;</span>
+        <span class=p>}</span>
+    <span class=p>}</span>
+
+     <span class=c1># ...other server blocks
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></div><p>Modify the virtual server blocks for auth and ide with the usual SSL stuff (make sure to update the certificate
+path!):</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>server</span> <span class=p>{</span>
+    <span class=kn>listen</span> <span class=mi>443</span> <span class=s>ssl</span> <span class=s>http2</span><span class=p>;</span>
+
+    <span class=kn>ssl_certificate</span>     <span class=s>/etc/letsencrypt/live/example.com/fullchain.pem</span><span class=p>;</span>
+    <span class=kn>ssl_certificate_key</span> <span class=s>/etc/letsencrypt/live/example.com/privkey.pem</span><span class=p>;</span>
+    <span class=kn>include</span>             <span class=s>/etc/letsencrypt/options-ssl-nginx.conf</span><span class=p>;</span>
+    <span class=kn>ssl_dhparam</span>         <span class=s>/etc/letsencrypt/ssl-dhparams.pem</span><span class=p>;</span>
+
+    <span class=c1># ...other directives
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></div><p>Don&rsquo;t worry, I&rsquo;ve got the final versions of the configuration files
+<a class=link href=https://github.com/Radiergummi/portable-development-environment target=_blank rel="noreferrer noopener">in the accompanying GitHub repository</a>
+, too!</p><p>To actually request and renew certificates, we&rsquo;ll need a certbot service:</p><div class=highlight><pre class=chroma><code class=language-yaml data-lang=yaml><span class=w>  </span><span class=k>certbot</span><span class=p>:</span><span class=w>
+</span><span class=w>    </span><span class=k>image</span><span class=p>:</span><span class=w> </span>certbot/certbot<span class=w>
+</span><span class=w>    </span><span class=k>restart</span><span class=p>:</span><span class=w> </span>unless-stopped<span class=w>
+</span><span class=w>    </span><span class=k>volumes</span><span class=p>:</span><span class=w>
+</span><span class=w>      </span>- ./certbot/conf<span class=p>:</span>/etc/letsencrypt<span class=w>
+</span><span class=w>      </span>- ./certbot/www<span class=p>:</span>/var/www/certbot<span class=w>
+</span><span class=w>    </span><span class=k>entrypoint</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;/bin/sh -c &#39;trap exit TERM; while :; do certbot renew; sleep 12h &amp; wait $${!}; done;&#39;&#34;</span><span class=w>
+</span></code></pre></div><p>Finally, you can either do the last bit of footwork manually using the certbot image or just adapt @wmnnd&rsquo;s
+excellent script to your setup:<br><a class=link href=https://github.com/wmnnd/nginx-certbot/blob/master/init-letsencrypt.sh target=_blank rel="noreferrer noopener">init-letsencrypt.sh</a>
+.</p><h2 id=wrapping-it-up class="heading heading--2"><a class=heading__anchor href=#wrapping-it-up>Wrapping it up</a></h2><p>What does this leave us with?</p><ul><li>A running Visual Studio Code installation running headlessly</li><li>A secure, OAuth-powered login with a provider of our choice</li><li>An up-to-date Ubuntu container with all our daily drivers installed within</li><li>A persistent home directory with our tool configurations</li><li>A persistent VS Code configuration directory</li></ul><p>We have just created our own, code-defined development environment. It is able to run everywhere Docker
+is running. It is hosted securely, only accessible to us. Its power is only limited by the server
+hardware we put below it. It can be powered down and back up again at any time!</p><p>As soon as you fire up the stack with <code>docker-compose up -d</code>, the services will start. If you&rsquo;ve configured
+everything correctly, you should now be able to navigate to <code>https://ide.example.com</code> and be greeted by the UI of
+Visual Studio Code.<br>On our Chromebook, we can install the progressive web app using the small plus button in the URL bar. This will also
+open the editor in its own, Chrome-less window, and is probably the next best thing to running VS Code natively on
+any other notebook!<br>It looks like this on my box:
+<img src=/img/vscode-chromebook.png alt="A screenshot of the code-server window"></p><p>I&rsquo;m soon going to work with a beefy, new MacBook Pro from the current generation, and definitely going to use
+PhpStorm again. Nevertheless, I&rsquo;m both astonished what&rsquo;s possible with current technology and proud of the
+environment I&rsquo;ve been able to bootstrap in an afternoon of work. No matter the situation, I will always have an
+emergency IDE available from anywhere in the future. If I was working with Visual Studio Code primarily, I would
+really consider this setup as my go-to environment!</p></div><div class=bottom-menu><hr><nav><a href=/posts>back</a>&#183;<a href=/posts>blog</a>&nbsp;&#183;&nbsp;<a href=https://github.com/Radiergummi>github</a>&nbsp;&#183;&nbsp;<a href=/about>about</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/imprint/>imprint</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/privacy/>privacy</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/>home</a></nav></div><div class=page-footer><script data-goatcounter=https://stats.9dev.de/count async src=https://stats.9dev.de/count.js></script><script></script></div></div></body></html>
