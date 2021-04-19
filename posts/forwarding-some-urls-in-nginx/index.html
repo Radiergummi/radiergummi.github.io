@@ -1,0 +1,196 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=referrer content="no-referrer-when-downgrade"><meta name=coverage content="Worldwide"><meta name=distribution content="Global"><meta name=HandheldFriendly content="True"><meta name=msapplication-tap-highlight content="no"><base href=https://www.moritzfriedrich.com/posts/forwarding-some-urls-in-nginx/><link rel=canonical href=https://www.moritzfriedrich.com/posts/forwarding-some-urls-in-nginx/ itemprop=url><link rel=sitemap type=application/xml title=Sitemap href=https://www.moritzfriedrich.com/sitemap.xml><meta name=url content="https://www.moritzfriedrich.com/posts/forwarding-some-urls-in-nginx/"><meta name=twitter:url content="https://www.moritzfriedrich.com/posts/forwarding-some-urls-in-nginx/"><meta property="og:url" content="https://www.moritzfriedrich.com/posts/forwarding-some-urls-in-nginx/"><meta name=description content="moritz friedrich, yet another full-stack developer."><meta itemprop=description content="moritz friedrich, yet another full-stack developer."><meta property="og:description" content="moritz friedrich, yet another full-stack developer."><meta name=twitter:description content="moritz friedrich, yet another full-stack developer."><meta property="og:locale" content="en"><meta name=language content="en"><meta property="og:title" content="Forwarding Some URLs in Nginx | Moritz Friedrich"><meta name=twitter:title content="Forwarding Some URLs in Nginx | Moritz Friedrich"><meta itemprop=name content="Forwarding Some URLs in Nginx | Moritz Friedrich"><meta name=application-name content="Forwarding Some URLs in Nginx | Moritz Friedrich"><meta property="og:site_name" content><meta name=twitter:site content><meta name=twitter:creator content><meta property="fb:app_id" content><meta property="fb:admins" content><meta itemprop=image content="https://www.moritzfriedrich.com/"><meta property="og:image" content="https://www.moritzfriedrich.com/"><meta name=twitter:image content="https://www.moritzfriedrich.com/"><meta name=twitter:image:src content="https://www.moritzfriedrich.com/"><meta property="og:type" content="article"><meta property="article:publisher" content><meta property="og:article:published_time" content="2021-04-19T12:53:41+0200"><meta property="article:published_time" content="2021-04-19T12:53:41+0200"><meta property="og:updated_time" content="2021-04-19T12:53:41+0200"><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color=#2b5797><meta name=msapplication-TileColor content="#2b5797"><meta name=theme-color content="#ffffff"><script defer type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"Forwarding Some URLs in Nginx","description":"Today we faced an interesting problem with the deployment of our new website to Webflow . Currently, we have lots of SEO-relevant aggregation pages and public profiles we\u0026rsquo;re not immediately ready to move to the new application. These pages are automatically generated from our old application server, receive serious traffic (40k views per day), and cannot be replicated in Webflow, our new website provider.\nUnfortunately, those pages are all placed on the root domain (matchory.","image":"https://www.moritzfriedrich.com/","datePublished":"2021-04-19T12:53:41+02:00","dateModified":"2021-04-19T12:53:41+02:00","wordCount":"2026","author":{"@type":"Person","name":""},"mainEntityOfPage":{"@type":"WebPage","@id":"https://www.moritzfriedrich.com/"},"publisher":{"@type":"Person","name":""},"keywords":["blog","story","nginx","devops"]}</script><link rel=stylesheet href=/css/style.min.1a74b97b18688690f2a48f70769c7bb1d5c9c4e6df98c90ad5d76ae6047647e3.css integrity="sha256-GnS5exhohpDypI9wdpx7sdXJxObfmMkK1ddq5gR2R+M=" crossorigin=anonymous media=screen><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Didact+Gothic|Fira+Code"><title>Forwarding Some URLs in Nginx</title></head><body><div class=wrap><header class=page-header id=title><h1 class=page-title>Forwarding Some URLs in Nginx</h1></header><div class=page-content id=content>Monday, 19. April 2021 &#183; 10 minutes<div class=tags><span class=tags__tag><a href=https://www.moritzfriedrich.com/tags/blog>blog</a></span>
+<span class=tags__tag><a href=https://www.moritzfriedrich.com/tags/story>story</a></span>
+<span class=tags__tag><a href=https://www.moritzfriedrich.com/tags/nginx>nginx</a></span>
+<span class=tags__tag><a href=https://www.moritzfriedrich.com/tags/devops>devops</a></span></div><p>Today we faced an interesting problem with the deployment of our new website to <a class=link href=https://webflow.com/ target=_blank rel="noreferrer noopener">Webflow</a>
+. Currently, we have lots of SEO-relevant
+aggregation pages and public profiles we&rsquo;re not immediately ready to move to the new application. These pages are automatically generated from our old
+application server, receive serious traffic (40k views per day), and cannot be replicated in Webflow, our new website provider.<br>Unfortunately, those pages are all placed on the root domain (<code>matchory.com/offending-pages</code>), and by &ldquo;lots&rdquo;, I meant several hundreds of them. This means we
+can&rsquo;t simply add redirects in Webflow, but have to keep pointing the DNS for <code>matchory.com</code> to our own web servers. There, we take it the other way around and
+redirect the traffic for all non-SEO pages to Webflow. But how (<a class=link href=#full-nginx-config>TL;DR</a>
+)?</p><hr><p>Luckily, we use nginx on our web servers, so we could use the proxy module to forward requests to another upstream server. Normally this is used to pass
+requests to an internal application server that should not be exposed to the internet directly, but of course nothing&rsquo;s stopping you from proxying to a public
+IP address instead! We took this to our advantage by forwarding requests for our website to the main webflow host at <code>https://proxy-ssl.webflow.com</code>, <em>if they
+match certain conditions</em>.</p><blockquote><p><strong>How did we determine the target host?</strong><br>Webflow provides directives for using a custom domain that include adding a <code>CNAME</code> record that points to this host:</p><pre><code class=language-dns data-lang=dns>www.matchory.com. IN CNAME proxy-ssl.webflow.com. 3600
+</code></pre><p>This means whatever server serves this SSL proxy at webflow probably knows how to terminate SSL for our custom domain. If it can do that, we should be equally
+able to perform HTTP requests with a matching host header against it!</p></blockquote><h2 id=configuring-the-upstream class="heading heading--2"><a class=heading__anchor href=#configuring-the-upstream>Configuring the upstream</a></h2><p>We start by defining an upstream we want our requests to proxy to:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>upstream</span> <span class=s>webflow</span> <span class=p>{</span>
+    <span class=kn>server</span> <span class=n>proxy-ssl.webflow.com</span><span class=p>:</span><span class=mi>443</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><p>We only add a single server here; the upstream is simply responsible for having a single target to route to in the rest of the config file. Note the port at the
+end of the host name: The default is port 80, even if we use the <code>https</code> protocol later on.</p><h2 id=adding-a-resolver class="heading heading--2"><a class=heading__anchor href=#adding-a-resolver>Adding a resolver</a></h2><p>To make sure nginx is able resolve the hostname in the upstream block, we will need to configure a resolver. If you haven&rsquo;t already, you can put it into
+your <code>http</code> block in the main config file (probably <code>/etc/nginx/nginx.conf</code>), but it may equally well be added to your site config, or server block.</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>resolver</span> <span class=mi>8</span><span class=s>.8.8.8</span> <span class=mi>8</span><span class=s>.8.4.4</span><span class=p>;</span>
+</code></pre></div><p>This uses the <a class=link href=https://developers.google.com/speed/public-dns target=_blank rel="noreferrer noopener">public Google resolvers</a>
+, but you can use whichever public DNS you fancy.</p><h2 id=routing-a-single-location-to-webflow class="heading heading--2"><a class=heading__anchor href=#routing-a-single-location-to-webflow>Routing a single location to Webflow</a></h2><p>Now that we have a working upstream, we can forward locations to it:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>location</span> <span class=p>=</span> <span class=s>/foo</span> <span class=p>{</span>
+    <span class=kn>proxy_pass</span> <span class=s>https://webflow</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><p>This would proxy any request to <code>/foo</code> to the Webflow server, using the https protocol. At least it should: We miss lots of configuration flags, so the above
+would fail miserably. To make it work, we&rsquo;ll have to understand what is actually happening in the background if a request is forwarded!</p><h3 id=excourse-request-proxying-sni-and-ssl class="heading heading--3"><a class=heading__anchor href=#excourse-request-proxying-sni-and-ssl>Excourse: Request proxying, SNI, and SSL</a></h3><p>Imagine executing a simple HTTP request against our website. It will look like this:</p><div class=highlight><pre class=chroma><code class=language-http data-lang=http><span class=nf>GET</span> <span class=nn>/</span> <span class=kr>HTTP</span><span class=o>/</span><span class=m>1.1</span>
+<span class=n>Host</span><span class=o>:</span> <span class=l>www.matchory.com</span>
+</code></pre></div><p>That instruct whoever is receiving it to deliver the index page of the host <code>www.matchory.com</code>.</p><p>Now suppose we&rsquo;d set up nginx to proxy <code>/foo</code> to another server, let&rsquo;s say, <code>foo.matchory.net</code>:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>location</span> <span class=p>=</span> <span class=s>/foo</span> <span class=p>{</span>
+    <span class=kn>proxy_pass</span> <span class=s>http://foo.matchory.net</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><p>In that case, nginx would pick up our request, and perform <em>another</em> HTTP requeston its own - think using curl on the server. This request will look something
+like this:</p><div class=highlight><pre class=chroma><code class=language-http data-lang=http><span class=nf>GET</span> <span class=nn>/foo</span> <span class=kr>HTTP</span><span class=o>/</span><span class=m>1.1</span>
+<span class=n>Host</span><span class=o>:</span> <span class=l>foo.matchory.net</span>
+<span class=n>X-Real-Ip</span><span class=o>:</span> <span class=l>1.2.3.4</span>
+<span class=n>X-Forwarded-Proto</span><span class=o>:</span> <span class=l>http</span>
+</code></pre></div><p>As you can see, the host header is being set to the name of the upstream server. This actually makes sense, because we&rsquo;re performing a plain old HTTP request to
+the upstream here!
+Then again, most of the time, the application running on the upstream server identifies itself as the web server: Our hypothetical <code>foo</code> server probably thinks
+its name was
+<code>www.matchory.com</code>. This is important so it can create fully qualified links to other resources it provides, for example.<br>So to convey the host header to the primary domain, we can instruct nginx to set the <code>Host</code> header:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>location</span> <span class=p>=</span> <span class=s>/foo</span> <span class=p>{</span>
+    <span class=kn>proxy_pass</span> <span class=s>http://foo.matchory.net</span><span class=p>;</span>
+    <span class=kn>proxy_set_header</span> <span class=s>Host</span> <span class=nv>$host</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><p>This will ensure the host header received by nginx will be passed on to the proxy, which can now successfully respond to the request. Nice!</p><p><em>What happens, though, if we throw HTTPS into the mix?</em></p><hr><p>Nothing extraordinary. Instead of sending a plain HTTP request to the upstream server, nginx will re-encrypt the request received before passing it on. While
+HTTPS requests are encrypted with the public key of the server, they <em>do</em> in fact expose the target hostname. Otherwise, we couldn&rsquo;t host multiple domains on
+the same server with different certificates, because the web server simply wouldn&rsquo;t know which private key to use for decrypting the request.<br>Therefore, web servers support a procedure called <em><strong>S</strong>erver <strong>N</strong>ame <strong>I</strong>dentification</em>, or SNI for short. If enabled, a client will send the hostname it
+attempts to connect to during the SSL handshake, in plain text. This allows the server to retrieve the appropriate encryption configuration before starting the
+actual handshake (Note that I&rsquo;m grossly over-simplifying, but the details really aren&rsquo;t that important here). After the secure connection was negotiated
+successfully, the client sends <em>the actual, encrypted request</em>.</p><p>If you&rsquo;ve been following closely, you might have noticed that there&rsquo;s a difference between the <code>Host</code> header we&rsquo;ve used in the previous example, and the SNI
+name sent during the SSL handshake: The header isn&rsquo;t even sent during the initial connection! If you simply attempted to swap &ldquo;http&rdquo; for &ldquo;https&rdquo; in the above
+example, your request would fail, because nginx would request to connect to <code>foo.matchory.net</code> instead of <code>www.matchory.com</code>, before sending the request with
+the proper hostname.<br>This might work for a backend application you control, but not for a SaaS platform like Webflow, that uses a webserver that dynamically resolves hosts.</p><h2 id=setting-the-sni-name-to-proxy-to class="heading heading--2"><a class=heading__anchor href=#setting-the-sni-name-to-proxy-to>Setting the SNI name to proxy to</a></h2><p>Everytime I wonder whether nginx can so something, I learn that <em>of course</em> there&rsquo;s a flag for that&ndash;you just need to know which. In this case, it&rsquo;s two of
+them:
+<a class=link href=https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_server_name target=_blank rel="noreferrer noopener"><code>proxy_ssl_server_name</code></a>
+and
+<a class=link href=https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_name target=_blank rel="noreferrer noopener"><code>proxy_ssl_name</code></a>
+. The former enables SNI for the upstream connection, the latter
+sets the <em>name</em> to use during SNI. This yields the following location:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>location</span> <span class=p>=</span> <span class=s>/foo</span> <span class=p>{</span>
+    <span class=kn>proxy_pass</span>              <span class=s>https://webflow</span><span class=p>;</span>    <span class=c1># Pass the request to the webflow upstream
+</span><span class=c1></span>    <span class=kn>proxy_ssl_server_name</span>   <span class=no>on</span><span class=p>;</span>                 <span class=c1># Enable SNI
+</span><span class=c1></span>    <span class=kn>proxy_ssl_name</span>          <span class=nv>$host</span><span class=p>;</span>              <span class=c1># Set the SNI name to the current host
+</span><span class=c1></span>    <span class=kn>proxy_set_header</span>        <span class=s>Host</span> <span class=nv>$host</span><span class=p>;</span>         <span class=c1># Set the host header in the request
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></div><p>This ensures the request will be directed at the correct server, by properly conveying the target server during the SSL handshake (via SNI) and HTTP request
+parsing (via header).</p><h2 id=performance-optimizations class="heading heading--2"><a class=heading__anchor href=#performance-optimizations>Performance optimizations</a></h2><p>The last part missing here is the upstream certificate validation: nginx will attempt to verify the certificate of the upstream server, expecting that we
+control it and need to make sure the server actually carries one of our certificates. As we&rsquo;re connecting to an externally managed service, this isn&rsquo;t
+necessary, and we can simply turn validation off. Additionally, using
+the <a class=link href=https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_session_reuse target=_blank rel="noreferrer noopener"><code>proxy_ssl_session_reuse</code></a>
+flag, we can configure nginx to reuse SSL
+sessions so it doesn&rsquo;t have to perform a full SSL handshake on every request. Update the location block to its full form:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>location</span> <span class=p>=</span> <span class=s>/foo</span> <span class=p>{</span>
+    <span class=kn>proxy_pass</span>              <span class=s>https://webflow</span><span class=p>;</span>
+    <span class=kn>proxy_ssl_verify</span>        <span class=no>off</span><span class=p>;</span>
+    <span class=kn>proxy_ssl_session_reuse</span> <span class=no>on</span><span class=p>;</span>
+    <span class=kn>proxy_ssl_server_name</span>   <span class=no>on</span><span class=p>;</span>
+    <span class=kn>proxy_ssl_name</span>          <span class=nv>$host</span><span class=p>;</span>
+
+    <span class=kn>proxy_set_header</span> <span class=s>Host</span>               <span class=nv>$host</span><span class=p>;</span>
+    <span class=kn>proxy_set_header</span> <span class=s>X-Real-Ip</span>          <span class=nv>$remote_addr</span><span class=p>;</span>
+    <span class=kn>proxy_set_header</span> <span class=s>X-Forwarded-For</span>    <span class=nv>$remote_addr</span><span class=p>;</span>
+    <span class=kn>proxy_set_header</span> <span class=s>X-Forwarded-Proto</span>  <span class=s>https</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><h2 id=routing-multiple-locations-to-webflow class="heading heading--2"><a class=heading__anchor href=#routing-multiple-locations-to-webflow>Routing multiple locations to Webflow</a></h2><p>If you wanted to proxy multiple locations with different URIs to Webflow, copy-pasting this would become tedious soon. By using another cool nginx feature, we
+can keep our configuration file short and concise: <a class=link href=https://nginx.org/en/docs/http/ngx_http_core_module.html#location target=_blank rel="noreferrer noopener">Named locations</a>
+. Named locations are
+location blocks which cannot be reached by a request automatically, but referred to in other directives instead. Specifically, you may only use them
+in <code>error_page</code>, <code>post_action</code> or <code>try_files</code>, which is exactly what we are going to do. Using <code>try_files</code>, we can direct nginx to test multiple resources and
+use the first that exist. This is often useful to attempt serving static files before falling back to a web app:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>location</span> <span class=s>/</span> <span class=p>{</span>
+    <span class=kn>try_files</span> <span class=nv>$uri</span> <span class=nv>$uri/</span> <span class=s>/index.php</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><p>Instead of a PHP file, we can also use a named location as the fallback file:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>location</span> <span class=s>@fallback</span> <span class=p>{</span>
+    <span class=c1># ...
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=k>location</span> <span class=s>/</span> <span class=p>{</span>
+    <span class=kn>try_files</span> <span class=nv>$uri</span> <span class=nv>$uri/</span> <span class=s>@fallback</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><p>As we don&rsquo;t want to serve anything from the proxy, we just need a dummy to try before passing the request to our named location (nginx requires at least two
+different arguments to <code>try_files</code>). This actually took me a bit, until I stumbled upon <a class=link href=https://serverfault.com/a/965779/217063 target=_blank rel="noreferrer noopener">this post on ServerFault</a>
+which suggests using <code>/dev/null</code> as the first argument. I agree with the author that this is a terrible, terrible but also beautifully simple workaround! This
+allows the following construct, <em>with no performance hit</em>:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>location</span> <span class=s>@fallback</span> <span class=p>{</span>
+    <span class=c1># ...
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=k>location</span> <span class=s>/</span> <span class=p>{</span>
+    <span class=kn>try_files</span> <span class=s>/dev/null</span> <span class=s>@fallback</span><span class=p>;</span>
+<span class=p>}</span>
+</code></pre></div><p>This will send all requests to the fallback location immediately. Applying this to our situation, we end up with the following (shortened for clarity):</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=k>upstream</span> <span class=s>webflow</span> <span class=p>{</span>
+    <span class=kn>server</span> <span class=n>proxy-ssl.webflow.com</span><span class=p>:</span><span class=mi>443</span><span class=p>;</span>
+<span class=p>}</span>
+
+<span class=k>server</span> <span class=p>{</span>
+    <span class=kn>location</span> <span class=s>@webflow</span> <span class=p>{</span>
+        <span class=kn>proxy_pass</span> <span class=s>https://webflow</span><span class=p>;</span>
+        <span class=c1># ...
+</span><span class=c1></span>    <span class=p>}</span>
+
+    <span class=kn>location</span> <span class=p>=</span> <span class=s>/</span> <span class=p>{</span>
+        <span class=kn>try_files</span> <span class=s>/dev/null</span> <span class=s>@webflow</span><span class=p>;</span>
+    <span class=p>}</span>
+
+    <span class=kn>location</span> <span class=s>^~</span> <span class=s>/([a-z]</span><span class=p>{</span><span class=kn>2})/.*$</span> <span class=p>{</span>
+        <span class=kn>try_files</span> <span class=s>/dev/null</span> <span class=s>@webflow</span><span class=p>;</span>
+    <span class=p>}</span>
+<span class=p>}</span>
+</code></pre></div><p>With just a single line, we can proxy a select URI pattern to our Webflow site, without any changes to the existing site, the SSL certificates, or Webflow
+settings. Any performance hit by the doubled requests is levelled out by Cloudflare caching in front of nginx.</p><p>As is often the case, I would have taken <em>considerably</em> longer if it wasn&rsquo;t for the excellent people posting on StackOverflow and ServerFault. Thank you all!</p><h2 id=full-nginx-config class="heading heading--2"><a class=heading__anchor href=#full-nginx-config>Full nginx config</a></h2><p>The final nginx configuration looks like the following:</p><div class=highlight><pre class=chroma><code class=language-nginx data-lang=nginx><span class=c1># Start by defining an upstream to send requests to. This helps organization.
+</span><span class=c1></span><span class=k>upstream</span> <span class=s>webflow</span> <span class=p>{</span>
+
+    <span class=c1># Make sure to add the port after the server name, because nginx won&#39;t do this
+</span><span class=c1></span>    <span class=c1># automatically, even if proxying to a https target.
+</span><span class=c1></span>    <span class=kn>server</span> <span class=n>proxy-ssl.webflow.com</span><span class=p>:</span><span class=mi>443</span><span class=p>;</span>
+<span class=p>}</span>
+
+<span class=c1># Make sure nginx can resolve the webflow domain correctly
+</span><span class=c1></span><span class=k>resolver</span> <span class=mi>8</span><span class=s>.8.8.8</span> <span class=mi>8</span><span class=s>.8.4.4</span><span class=p>;</span>
+
+<span class=k>server</span> <span class=p>{</span>
+
+    <span class=c1># The server name of our primary domain. Note that this configuration will be used for
+</span><span class=c1></span>    <span class=c1># both the old _and_ the new website.
+</span><span class=c1></span>    <span class=kn>server_name</span> <span class=s>www.domain.com</span><span class=p>;</span>
+
+    <span class=c1># This named location is only routed internally, and will proxy any requests to the 
+</span><span class=c1></span>    <span class=c1># webflow upstream with the proper configuration set.
+</span><span class=c1></span>    <span class=kn>location</span> <span class=s>@webflow</span> <span class=p>{</span>
+
+        <span class=c1># Note the &#34;https&#34; here, making sure the request is re-encrypted
+</span><span class=c1></span>        <span class=kn>proxy_pass</span>                          <span class=s>https://webflow</span><span class=p>;</span>
+
+        <span class=c1># Set the host header of our current request (probably www.domain.com). We want to
+</span><span class=c1></span>        <span class=c1># forward that to the upstream, so they can properly route the request.
+</span><span class=c1></span>        <span class=kn>proxy_set_header</span> <span class=s>Host</span>               <span class=nv>$host</span><span class=p>;</span>
+
+        <span class=c1># Setting these is good faith
+</span><span class=c1></span>        <span class=kn>proxy_set_header</span> <span class=s>X-Forwarded-For</span>    <span class=nv>$remote_addr</span><span class=p>;</span>
+        <span class=kn>proxy_set_header</span> <span class=s>X_FORWARDED_PROTO</span>  <span class=s>https</span><span class=p>;</span>
+
+        <span class=c1># Disable SSL verification: As we don&#39;t own the Webflow upstream, we can&#39;t keep 
+</span><span class=c1></span>        <span class=c1># track of their certificate. We trust their upstream anyway, so if they went rogue,
+</span><span class=c1></span>        <span class=c1># we couldn&#39;t do anything about it otherwise, either.
+</span><span class=c1></span>        <span class=kn>proxy_ssl_verify</span>        <span class=no>off</span><span class=p>;</span>
+
+        <span class=c1># Reuse SSL sessions: This prevents having to perform a separate SSL handshake for
+</span><span class=c1></span>        <span class=c1># every single request, but pool connections instead.
+</span><span class=c1></span>        <span class=kn>proxy_ssl_session_reuse</span> <span class=no>on</span><span class=p>;</span>
+
+        <span class=c1># SSL server name: This is the crucial bit. During SNI (server name identification),
+</span><span class=c1></span>        <span class=c1># nginx uses the name of the upstream by default, which would be Webflow&#39;s
+</span><span class=c1></span>        <span class=c1># proxy-ssl.webflow.com in our case. Here, we enable manual ambiguation.
+</span><span class=c1></span>        <span class=kn>proxy_ssl_server_name</span>   <span class=no>on</span><span class=p>;</span>
+
+        <span class=c1># Set the actual SNI name to send: Here, we use our Host header value instead, so 
+</span><span class=c1></span>        <span class=c1># the request can be identified on the Webflow origin server.
+</span><span class=c1></span>        <span class=kn>proxy_ssl_name</span>          <span class=nv>$host</span><span class=p>;</span>
+    <span class=p>}</span>
+
+    <span class=c1># This block matches any URLs that start with a language code, and forwards them to the
+</span><span class=c1></span>    <span class=c1># webflow named location.
+</span><span class=c1></span>    <span class=kn>location</span> <span class=p>~</span><span class=sr>^</span> <span class=s>/([a-z]</span><span class=p>{</span><span class=kn>2})/.*$</span> <span class=p>{</span>
+        <span class=kn>try_files</span> <span class=s>/dev/null</span> <span class=s>@webflow</span><span class=p>;</span>
+    <span class=p>}</span>
+
+    <span class=c1># This block matches all requests for the homepage (eg. a single &#34;/&#34;), and forwards them
+</span><span class=c1></span>    <span class=c1># to the webflow named location.
+</span><span class=c1></span>    <span class=kn>location</span> <span class=p>=</span> <span class=s>/</span> <span class=p>{</span>
+        <span class=kn>try_files</span> <span class=s>/dev/null</span> <span class=s>@webflow</span><span class=p>;</span>
+    <span class=p>}</span>
+
+    <span class=c1># This is the default location for all other requests, routed to our legacy application.
+</span><span class=c1></span>    <span class=kn>location</span> <span class=s>/</span> <span class=p>{</span>
+        <span class=kn>try_files</span> <span class=nv>$uri</span> <span class=nv>$uri/</span> <span class=s>@app</span><span class=p>;</span>
+    <span class=p>}</span>
+
+    <span class=c1># ...
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></div></div><div class=bottom-menu><hr><nav><a href=/posts>back</a>&#183;<a href=/posts>blog</a>&nbsp;&#183;&nbsp;<a href=https://github.com/Radiergummi>github</a>&nbsp;&#183;&nbsp;<a href=/about>about</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/imprint/>imprint</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/privacy/>privacy</a>&nbsp;&#183;&nbsp;<a href=https://www.moritzfriedrich.com/>home</a></nav></div><div class=page-footer><script data-goatcounter=https://stats.9dev.de/count async src=https://stats.9dev.de/count.js></script><script></script></div></div></body></html>
